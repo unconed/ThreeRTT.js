@@ -9,9 +9,9 @@ It can be used directly with Three.js or as a tQuery plug-in.
 
 * * *
 
-ThreeRTT provides virtual render targets backed by multiple buffers, providing transparent read/write/history access. It also includes specialized ShadersMaterials for writing common GLSL pixel effects.
+ThreeRTT provides smart render targets backed by multiple buffers, providing transparent read/write/history access. It also includes specialized ShadersMaterials for writing common GLSL pixel effects.
 
-When used with tQuery, a 'render to texture' world object is provided which hooks into the rendering pipeline. Render-to-texture passes can be ordered manually to ensure correct rendering of complex effects.
+When used with tQuery, a 'render to texture' world object is provided which hooks into the rendering pipeline and can be sized automatically to the viewport.
 
 Includes: microevent.js (Jerome Etienne)
 
@@ -21,11 +21,12 @@ Builds:
  * ThreeRTT-tquery: microevent + core + tQuery plug-in
 
 Basic Usage
------
+===
 
-1) Image feedback effect (stand-alone)
+Image feedback effect (stand-alone)
+---
 
-Create an isolated render-to-texture stage, i.e. a scene + camera + rendertargets, passing in your Three.js renderer:
+Create an isolated render-to-texture `Stage`, i.e. a scene + camera + rendertargets, passing in your Three.js renderer and options like size:
 
 ```
 var rtt = new ThreeRTT.Stage(renderer, {
@@ -34,36 +35,34 @@ var rtt = new ThreeRTT.Stage(renderer, {
 });
 ```
 
-Create a shader material to render into the render target using FragmentMaterial. Specify a literal piece of fragment shader code, or the ID of a script tag containing the source code. Optionally add custom textures and uniforms. You can access the `texture` sampler2D uniform to read from the previously rendered frame:
+Create a per-pixel shader material to render into the render target using `FragmentMaterial`. Specify a literal piece of fragment shader code, or the ID of a script tag containing the source code. Optionally add custom textures and uniforms. You can access the `texture` sampler2D uniform to read from the previously rendered frame:
 
 ```
-var rttMaterial = new ThreeRTT.FragmentMaterial(rtt, fragmentShader);
+var material = new ThreeRTT.FragmentMaterial(rtt, fragmentShader);
 // OR
-var rttMaterial = new ThreeRTT.FragmentMaterial(rtt, fragmentShader, textures, uniforms);
+var material = new ThreeRTT.FragmentMaterial(rtt, fragmentShader, textures, uniforms);
 ```
 
-Use the .material() helper to render the shader as a full screen quad into the stage:
+Use the .material() method to render the shader as a full screen quad into the stage:
 
 ```
-rtt.material(rttMaterial);
+rtt.material(material);
 ```
 
-Access the generated texture using rtt.read(), which returns a THREE.RenderTarget object. This can be used like a THREE.Texture object in materials, applied to objects in your regular Three.js scene. For convenience, you can render the generated texture directly to the screen using `ScreenGeometry` and `FragmentMaterial`:
-
+Add something into the RTT scene to draw onto the feedback surface.
 ```
-// Render as full screen quad using default shader
-var quad = new THREE.Mesh(
-  new THREE.ScreenGeometry(),
-  new THREE.FragmentMaterial(rtt)
-);
-scene.add(quad);
-
-// Render onto a sphere
+// Render a sphere
 var sphere = new THREE.Mesh(
   new THREE.SphereGeometry(1),
-  new THREE.MeshBasicMaterial({ map: rtt.read() })
+  new THREE.MeshBasicMaterial()
 );
-scene.add(sphere);
+rtt.scene.add(sphere);
+```
+
+Compose the rendered texture into the scene using the `Compose` helper:
+
+```
+var compose = new ThreeRTT.Compose(scene, rtt);
 ```
 
 Before rendering your Three.js scene, call .render() on the render-to-texture stage first.
@@ -72,30 +71,30 @@ rtt.render();
 renderer.render(scene, camera);
 ```
 
-2) Image feedback effect (tQuery)
+Image feedback effect (tQuery)
+---
 
-Create an isolated render-to-texture world.
-
-```
-var rtt = world.rtt({
-  width: 512,
-  height: 512
-});
-```
-
-Set the material to render into the render target using .fragment() to create and bind a FragmentMaterial. Specify a literal piece of fragment shader code, or the ID of a script tag containing the source code. Optionally add custom textures and uniforms. You can access the `texture` sampler2D uniform to read from the previously rendered frame:
+Create an isolated render-to-texture world by calling `.rtt()` and specify a fragment shader to render using `.fragment()`. Specify a literal piece of fragment shader code, or the ID of a script tag containing the source code. Optionally add custom textures and uniforms. You can access the `texture` sampler2D uniform to read from the previously rendered frame:
 
 ```
-rtt.fragment(fragmentShader);
+var rtt = world.rtt().fragment(fragmentShader);
 // OR
-rtt.fragment(fragmentShader, textures, uniforms);
+var rtt = world.rtt().fragment(fragmentShader, textures, uniforms);
 ```
 
+Add something into the RTT scene to draw onto the feedback surface:
+```
+var sphere = tQuery.createSphere().addTo(rtt);
+```
+
+Compose the rendered texture into the scene by calling `.compose()` on the world.
+```
+world.compose(rtt);
+```
 
 Shaders
 -------
 
-See `shaders/shaders.glsl.html` for an example shader that generates a 3d spectrum voiceprint.
 
 * * *
 

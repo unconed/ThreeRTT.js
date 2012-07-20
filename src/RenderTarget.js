@@ -4,7 +4,7 @@
  * Contains multiple buffers for rendering from/to itself transparently
  * and/or remembering multiple frames of history.
  * 
- * Set options.buffers to the number of frames needed (default 2).
+ * Set options.history to the number of frames of history needed (default 0).
  *
  * Render a frame:
  * .render(scene, camera)
@@ -29,15 +29,18 @@ ThreeRTT.RenderTarget = function (renderer, options) {
     width:         256,
     height:        256,
     texture:       {},
-    clear:         { color: true, depth: true, stencil: true },
+    clear:         { color: false, depth: true, stencil: true },
     clearColor:    0xFFFFFF,
     clearAlpha:    0,
-    buffers:       2,
+    history:       0,
     scene:         null,
     camera:        null,
     autoAdvance:   true//,
   }, options);
   this.renderer = renderer;
+
+  // Number of buffers = history + read/write
+  this.buffers = this.options.history + 2;
 
   // Make sure mip-mapping is disabled for non-power-of-two targets.
   if (!ThreeRTT.isPowerOfTwo(options.width) ||
@@ -56,14 +59,13 @@ ThreeRTT.RenderTarget.prototype = {
   // Retrieve virtual target for reading from, n frames back.
   read: function (n) {
     // Clamp history to available buffers minus write buffer.
-    n = Math.min(this.options.buffers - 2, Math.abs(n || 0));
+    n = Math.min(this.options.history, Math.abs(n || 0));
     return this.virtuals[n];
   },
 
-  // Retrieve virtual render target for writing/rendering to.
+  // Retrieve real render target for writing/rendering to.
   write: function () {
-    // Write buffer is the last virtual buffer.
-    return this.virtuals[this.options.buffers - 1];
+    return this.targets[this.index];
   },
 
   // Retrieve / change size
@@ -103,29 +105,31 @@ ThreeRTT.RenderTarget.prototype = {
   // (Re)allocate render targets
   allocateTargets: function () {
     var options = this.options;
+              n = this.buffers;
 
     // Allocate/Refresh real render targets
     var targets = this.targets = [];
-    _.loop(options.buffers, function () {
+    _.loop(n, function (i) {
 
       targets.push(new THREE.WebGLRenderTarget(
-        options.width,
-        options.height,
+        this.width,
+        this.height,
         options.texture
       ));
-    });
+      targets[i].__index = i;
+    }.bind(this));
   },
 
   // Prepare virtual render targets for reading/writing.
   allocateVirtuals: function () {
     var original = this.targets[0],
         virtuals  = this.virtuals || [];
-        n = options.buffers;
+        n = this.buffers - 1; // One buffer reserved for writing at any given time
 
     // Keep virtual targets around if possible.
-    if (n > virtuals.length)
+    if (n > virtuals.length) {
       _.loop(n - virtuals.length, function () {
-        virtual.push(original.clone());
+        virtuals.push(original.clone());
       }.bind(this));
     }
     else {
@@ -133,16 +137,18 @@ ThreeRTT.RenderTarget.prototype = {
     }
 
     // Set sizes of virtual render targets.
-    _.each(virtual, function (target) {
-      target.width = width;
-      target.height = height;
-    });
+    _.each(virtuals, function (target, i) {
+      target.width = this.width;
+      target.height = this.height;
+      target.__index = i;
+    }.bind(this));
 
     this.virtuals = virtuals;
 
-    // Reset index.
-    this.index = 0;
-  }
+    // Reset index and re-init targets.
+    this.index = -1;
+    this.advance();
+  },
 
   // Advance through buffers.
   advance: function () {
@@ -150,20 +156,22 @@ ThreeRTT.RenderTarget.prototype = {
         targets  = this.targets,
         virtuals = this.virtuals,
         index    = this.index,
-        n        = options.buffers;
+        n        = this.buffers;
 
-    // Point virtual render targets to new targets.
-    _.loop(options.buffers, function (i) {
-      var dst = virtuals[(i + index) % n],
-          src = targets[i];
+    // Advance cyclic index.
+    this.index = index = (index + 1) % n;
+
+    // Point virtual render targets to last rendered frame(s) in order.
+    _.loop(n - 1, function (i) {
+      var dst = virtuals[i],
+          src = targets[(n - 1 - i + index) % n];
 
       dst.__webglTexture      = src.__webglTexture;
       dst.__webglFramebuffer  = src.__webglFramebuffer;
       dst.__webglRenderbuffer = src.__webglRenderbuffer;
+      dst.__index             = src.__index;
     });
 
-    // Advance cyclic index.
-    this.index = (index + 1) % n;
   },
 
   // Clear render target.
@@ -184,6 +192,9 @@ ThreeRTT.RenderTarget.prototype = {
     // Disable autoclear.
     var autoClear = this.renderer.autoClear;
     this.renderer.autoClear = false;
+
+    // Clear manually (with correct flags).
+    this.clear();
 
     // Render scene.
     this.renderer.render(scene, camera, this.write());

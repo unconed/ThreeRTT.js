@@ -1,4 +1,4 @@
-<!-- generic shaders -->
+<!-- generic vertex/fragment shaders -->
 <script type="application/x-glsl" id="generic-vertex">
 varying vec2 vUV;
 
@@ -23,6 +23,7 @@ void main() {
   vec2 xy = uvFlip * 2.0 - 1.0;
 
   vUV = uvFlip;
+  // Draw at end of clip space to allow occlusion.
   gl_Position = vec4(xy, 1.0, 1.0);
 }
 </script>
@@ -42,6 +43,7 @@ void main() {
 }
 </script>
 
+<!-- downsample shader -->
 <script type="application/x-glsl" id="rtt-vertex-downsample">
 uniform vec2 sampleAlignment;
 
@@ -61,3 +63,82 @@ void main() {
   gl_Position = vec4(xy, 1.0, 1.0);
 }
 </script>
+
+<!-- fade out -->
+<script type="application/x-glsl" id="rtt-fragment-fadeout">
+uniform sampler2D texture;
+varying vec2 vUV;
+
+void main() {
+  gl_FragColor = texture2D(texture, vUV) - 1.0/255.0;
+}
+</script>
+
+<!-- 7-tap gaussian blur X-->
+<script type="application/x-glsl" id="rtt-fragment-blurX">
+uniform sampler2D texture;
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+const float gain = 64.0;
+
+void main() {
+  vec3 accum = vec3(0, 0, 0);
+
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -3.0, 0.0)).xyz * 1.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -2.0, 0.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -1.0, 0.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * 0.0, 0.0)).xyz * 20.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * 1.0, 0.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * 2.0, 0.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -3.0, 0.0)).xyz * 1.0;
+
+  gl_FragColor = vec4(accum / gain, 1.0);
+}
+</script>
+
+<!-- 7-tap gaussian blur Y-->
+<script type="application/x-glsl" id="rtt-fragment-blurY">
+uniform sampler2D texture;
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+const float gain = 64.0;
+
+void main() {
+  vec3 accum = vec3(0, 0, 0);
+
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * -3.0)).xyz * 1.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * -2.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * -1.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 0.0)).xyz * 20.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 1.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 2.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 3.0)).xyz * 1.0;
+
+  gl_FragColor = vec4(accum / gain, 1.0);
+}
+</script>
+
+<!-- combine image + blurred to create bloom -->
+<script type="application/x-glsl" id="combine-fragment-bloom">
+uniform sampler2D texture;
+uniform sampler2D texture2;
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+void main() {
+  vec3 color = texture2D(texture, vUV).xyz;
+  vec3 glow = texture2D(texture2, vUV).xyz;
+
+  glow = (glow - .25) * 1.2;
+
+  vec3 combine = color * .6 + glow * vec3(1.0, 0.9, 0.8);
+
+  gl_FragColor = vec4(combine, 1.0);
+}
+</script>
+

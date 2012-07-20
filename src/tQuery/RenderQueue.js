@@ -4,14 +4,6 @@
  * Attach a weighted queue to the given world, rendered before the world itself.
  */
 ThreeRTT.RenderQueue = function (world) {
-  // Singleton attached to world.
-  if (world.__renderQueue) {
-    return world.__renderQueue;
-  }
-  if (this == window) return new ThreeRTT.RenderQueue(world);
-
-  world.__renderQueue = this;
-
   this.world = world;
   this.queue = [];
   this.callback = null;
@@ -39,7 +31,7 @@ ThreeRTT.RenderQueue.prototype = {
         world = this.world;
 
     if (queue.length && !this.callback) {
-      world.loop().hookOnPreRender(this.callback = function () {
+      world.loop().hookPreRender(this.callback = function () {
         _.each(queue, function (stage) {
           stage.render();
         });
@@ -53,7 +45,7 @@ ThreeRTT.RenderQueue.prototype = {
         world = this.world;
 
     if (!queue.length && this.callback) {
-      world.loop().unhookOnPreRender(this.callback);
+      world.loop().unhookPreRender(this.callback);
       this.callback = null;
     }
   },
@@ -62,6 +54,19 @@ ThreeRTT.RenderQueue.prototype = {
   sort: function () {
     this.queue.sort(function (a, b) {
       return a.order - b.order;
-    })
+    });
   }//,
 };
+
+/**
+ * Helper to return the single RenderQueue associated with a world.
+ */
+ThreeRTT.RenderQueue.bind = function (world) {
+  var key = '__rttRenderQueue';
+
+  // Singleton attached to world.
+  if (world[key]) {
+    return world[key];
+  }
+  return (world[key] = new ThreeRTT.RenderQueue(world));
+}

@@ -5,6 +5,8 @@ vendor/microevent.js
 
 SRC="
 src/Common.js
+src/Stage.js
+src/Compose.js
 src/Camera.js
 src/RenderTarget.js
 src/ScreenGeometry.js
