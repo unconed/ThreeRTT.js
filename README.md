@@ -1,7 +1,7 @@
 ThreeRTT.js
 ==========
 
-![ThreeRTT.js](https://raw.github.com/unconed/ThreeAudio.js/master/misc/ThreeRTT.png)
+![ThreeRTT.js](https://raw.github.com/unconed/ThreeRTT.js/master/misc/ThreeRTT.png)
 
 ThreeRTT helps you create advanced render-to-texture effects in Three.js. It lets you render effects with framebuffer feedback, access past rendered frames, downsample rendered images with anti-aliasing, do per-pixel raytracing, and more.
 
