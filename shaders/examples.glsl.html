@@ -1,0 +1,151 @@
+<!-- fade out -->
+<script type="application/x-glsl" id="rtt-fragment-fadeout">
+uniform sampler2D texture;
+varying vec2 vUV;
+
+void main() {
+  gl_FragColor = texture2D(texture, vUV) - 1.0/255.0;
+}
+</script>
+
+<!-- 7-tap gaussian blur X-->
+<script type="application/x-glsl" id="rtt-fragment-blurX">
+uniform sampler2D texture;
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+const float gain = 64.0;
+
+void main() {
+  vec3 accum = vec3(0, 0, 0);
+
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -3.0, 0.0)).xyz * 1.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -2.0, 0.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -1.0, 0.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * 0.0, 0.0)).xyz * 20.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * 1.0, 0.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * 2.0, 0.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(sampleStep.x * -3.0, 0.0)).xyz * 1.0;
+
+  gl_FragColor = vec4(accum / gain, 1.0);
+}
+</script>
+
+<!-- 7-tap gaussian blur Y-->
+<script type="application/x-glsl" id="rtt-fragment-blurY">
+uniform sampler2D texture;
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+const float gain = 64.0;
+
+void main() {
+  vec3 accum = vec3(0, 0, 0);
+
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * -3.0)).xyz * 1.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * -2.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * -1.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 0.0)).xyz * 20.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 1.0)).xyz * 15.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 2.0)).xyz * 6.0;
+  accum += texture2D(texture, vUV + vec2(0.0, sampleStep.y * 3.0)).xyz * 1.0;
+
+  gl_FragColor = vec4(accum / gain, 1.0);
+}
+</script>
+
+<!--trans/zoom -->
+<script type="application/x-glsl" id="rtt-fragment-zoom">
+uniform sampler2D texture;
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+void main() {
+  vec2 xy = (vUV - .5);
+  vec2 zoom = xy * .95 + .5;
+
+  vec3 color = texture2D(texture, zoom).xyz;
+
+  gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
+<!-- render a 2D water effect using a discretization of surface waves -->
+<script type="application/x-glsl" id="rtt-fragment-water">
+uniform sampler2D texture[2]; // two frames of history
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+void main() {
+  // Previous sample
+  vec3 previous = texture2D(texture[1], vUV).xyz;
+
+  // Average around current sample x 2
+  vec3 current = (
+      texture2D(texture[0], vUV + vec2( sampleStep.x, 0.0)).xyz +
+      texture2D(texture[0], vUV + vec2(-sampleStep.x, 0.0)).xyz +
+      texture2D(texture[0], vUV + vec2( 0.0, sampleStep.y)).xyz +
+      texture2D(texture[0], vUV + vec2( 0.0,-sampleStep.y)).xyz
+    ) / 2.0;
+
+  // Subtract current sample from twice the average.
+  vec3 combine = (current - previous);
+
+  gl_FragColor = vec4(combine, 1.0);
+}
+</script>
+
+<!-- render a 2D water effect using a discretization of surface waves (bigger) -->
+<script type="application/x-glsl" id="rtt-fragment-water2">
+uniform sampler2D texture[2]; // two frames of history
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+void main() {
+  // Previous sample
+  vec3 previous = texture2D(texture[1], vUV).xyz;
+
+  // Average around current sample x 2
+  vec2 twoSamples = sampleStep*2.0;
+  vec3 current = (
+      texture2D(texture[0], vUV + vec2( twoSamples.x, 0.0)).xyz +
+      texture2D(texture[0], vUV + vec2(-twoSamples.x, 0.0)).xyz +
+      texture2D(texture[0], vUV + vec2( 0.0, twoSamples.y)).xyz +
+      texture2D(texture[0], vUV + vec2( 0.0,-twoSamples.y)).xyz +
+      texture2D(texture[0], vUV + vec2( sampleStep.x, sampleStep.y)).xyz +
+      texture2D(texture[0], vUV + vec2(-sampleStep.x, sampleStep.y)).xyz +
+      texture2D(texture[0], vUV + vec2( sampleStep.x,-sampleStep.y)).xyz +
+      texture2D(texture[0], vUV + vec2(-sampleStep.x,-sampleStep.y)).xyz
+    ) / 4.0;
+
+  // Subtract current sample from twice the average.
+  vec3 combine = (current - previous);
+
+  gl_FragColor = vec4(combine, 1.0);
+}
+</script>
+
+<!-- combine two images -->
+<script type="application/x-glsl" id="combine-fragment">
+uniform sampler2D texture;
+uniform sampler2D texture2;
+uniform vec2 sampleStep;
+
+varying vec2 vUV;
+
+void main() {
+  vec3 color = texture2D(texture, vUV).xyz;
+  vec3 glow = texture2D(texture2, vUV).xyz;
+
+  // Average two RGB colors
+  vec3 combine = color * .5 + glow * .5;
+
+  gl_FragColor = vec4(combine, 1.0);
+}
+</script>
+
