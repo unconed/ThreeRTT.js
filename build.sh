@@ -22,12 +22,12 @@ src/tQuery/tQuery.js
 "
 
 SHADERS="
-shaders/shaders.glsl.html
+shaders/builtin.glsl.html
 "
 
 cat $VENDOR $SRC > build/ThreeRTT.js
 cat $VENDOR $SRC $TQUERY > build/ThreeRTT-tquery.js
-cat $SHADERS > build/shaders.glsl.html
+cat $SHADERS > build/ThreeRTT.glsl.html
 
 curl --data-urlencode "js_code@build/ThreeRTT.js" 	\
 	-d "output_format=text&output_info=compiled_code&compilation_level=SIMPLE_OPTIMIZATIONS" \

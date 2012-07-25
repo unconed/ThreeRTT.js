@@ -3,7 +3,6 @@
  */
 ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, uniforms) {
   textures = textures || {};
-  var i = 0;
 
   // Autoname texture uniforms as texture1, texture2, ...
   function textureName(j) {
@@ -45,7 +44,6 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   _.each(textures, function (texture, key) {
     uniforms[key] = {
       type: 't',
-      value: i++,
       texture: ThreeRTT.toTexture(texture)//,
     };
   });
@@ -57,9 +55,20 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     if (!uniforms[key]) {
       uniforms[key] = {
         type: 't',
-        value: i++,
         texture: target.read()//,
       };
+    }
+  });
+
+  // Assign texture indices to uniforms.
+  var i = 0;
+  _.each(uniforms, function (uniform, key) {
+    if (uniform.type == 't') {
+      return uniform.value = i++;
+    }
+    if (uniform.type == 'tv') {
+      uniform.value = i;
+      i += uniform.texture.length;
     }
   });
 
@@ -67,6 +76,8 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   if (uniforms.texture1 && !uniforms.texture) {
     uniforms.texture = uniforms.texture1;
   }
+
+  console.log(fragmentShader, uniforms);
 
   // Update sampleStep uniform on render of source.
   renderTargets[0].on('render', function () {

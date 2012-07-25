@@ -10,7 +10,7 @@ ThreeRTT.World  = function (world, options) {
     autoRendering: true,
     autoSize:      !(options.width && options.height), // Default to autosize if no size specified
     order:         ++ThreeRTT.World.sequence,
-    scale:         1,
+    scale:         1//,
   }, options);
 
   // Inherit size from world
@@ -127,6 +127,11 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     return this._stage.read(n);
   },
 
+  // Return uniform for reading from this render target
+  uniform: function () {
+    return this._stage.uniform();
+  },
+
   // Render this world.
   render: function () {
 
@@ -152,7 +157,7 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
   	this.trigger('destroy');
 
     return this;
-  },
+  }
 });
 
 // Make it pluginable.

@@ -55,7 +55,7 @@ ThreeRTT.RenderQueue.prototype = {
     this.queue.sort(function (a, b) {
       return a.order - b.order;
     });
-  }//,
+  }
 };
 
 /**

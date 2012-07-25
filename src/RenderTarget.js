@@ -39,9 +39,6 @@ ThreeRTT.RenderTarget = function (renderer, options) {
   }, options);
   this.renderer = renderer;
 
-  // Number of buffers = history + read/write
-  this.buffers = this.options.history + 2;
-
   // Make sure mip-mapping is disabled for non-power-of-two targets.
   if (!ThreeRTT.isPowerOfTwo(options.width) ||
       !ThreeRTT.isPowerOfTwo(options.height)) {
@@ -49,6 +46,9 @@ ThreeRTT.RenderTarget = function (renderer, options) {
       options.texture.minFilter = THREE.LinearFilter;
     }
   }
+
+  // Number of buffers = history + read/write
+  this.history(this.options.history, true);
 
   // Set size and allocate render targets.
   this.size(options.width, options.height);
@@ -66,6 +66,18 @@ ThreeRTT.RenderTarget.prototype = {
   // Retrieve real render target for writing/rendering to.
   write: function () {
     return this.targets[this.index];
+  },
+
+  // Retrieve / change history count
+  history: function (history, ignore) {
+    if (history !== undefined) {
+      this._history = history;
+      this.buffers = history + 2;
+
+      // Refresh/allocate targets.
+      ignore || this.allocate();
+    }
+    return this._history;
   },
 
   // Retrieve / change size
@@ -204,6 +216,33 @@ ThreeRTT.RenderTarget.prototype = {
 
     // Advance render buffers so newly rendered frame is at .read(0).
     this.options.autoAdvance && this.advance();
+  },
+
+  // Return uniform for reading from this renderTarget.
+  uniform: function (i) {
+    var n = this.history();
+    if (n) {
+      // Expose frame history as array of textures.
+      var textures = [];
+      _.loop(n + 1, function (j) {
+        textures.push(this.read(-j));
+      }.bind(this));
+      return {
+        type: 'tv',
+        value: i,
+        texture: textures,
+        count: n + 1//,
+      };
+    }
+    else {
+      // No history, expose a single read texture.
+      return {
+        type: 't',
+        value: i,
+        texture: this.read(),
+        count: 1//,
+      };
+    }
   },
 
 };

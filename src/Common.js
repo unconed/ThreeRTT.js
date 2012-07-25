@@ -4,7 +4,7 @@
     if (!window[i]) throw "Error: ThreeRTT requires " + deps[i];
   }
 })({
-  'THREE': 'Three.js',
+  'THREE': 'Three.js'//,
 });
 
 // Namespace
@@ -77,13 +77,12 @@ ThreeRTT.toTarget = function (rtt) {
   return rtt;
 }
 
-// Convert World/Stage/RenderTarget into Texture if necessary.
-ThreeRTT.toTexture = function (rtt) {
+// Convert World/Stage/RenderTarget into texture uniform.
+ThreeRTT.toTexture = function (rtt, i) {
   // Convert World/Stage
   rtt = ThreeRTT.toTarget(rtt);
-  // Convert virtual RenderTarget object
+  // Convert virtual RenderTarget object to uniform
   if (ThreeRTT.RenderTarget && (rtt instanceof ThreeRTT.RenderTarget)) return rtt.read();
-  return rtt;
 }
 
 // Make microevent methods chainable.

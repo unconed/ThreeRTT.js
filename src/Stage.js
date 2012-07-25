@@ -6,7 +6,7 @@ ThreeRTT.Stage = function (renderer, options) {
     history:  0,
     camera:   {},
     material: false, 
-    scene:    null,
+    scene:    null//,
   }, options);
 
   // Prefill aspect ratio.
@@ -65,6 +65,11 @@ ThreeRTT.Stage.prototype = {
     return this.target.read(n);
   },
 
+  // Return uniform for reading from this render target
+  uniform: function () {
+    return this.target.uniform();
+  },
+
   // Render virtual render target.
   render: function () {
 	  this.target.clear();
@@ -85,5 +90,5 @@ ThreeRTT.Stage.prototype = {
     this.scene = null;
     this.camera = null;
     this.target = null;
-  },
+  }
 }
