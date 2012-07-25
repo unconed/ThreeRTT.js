@@ -22,7 +22,7 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
   });
 
   // Update uniforms on render.
-  rtTo.on('render', function () {
+  renderTargetTo.on('render', function () {
     var from = renderTargetFrom,
         to = renderTargetTo;
 

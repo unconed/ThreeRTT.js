@@ -5,12 +5,30 @@
  */
 ThreeRTT.World  = function (world, options) {
   // Handle parameters.
-  options  = _.extend({
+  options = options || {};
+  options = _.extend({
     autoRendering: true,
-    autoSize:      true,
-    order:         10000,
-    scaleFactor:   1,
+    autoSize:      !(options.width && options.height), // Default to autosize if no size specified
+    order:         ++ThreeRTT.World.sequence,
+    scale:         1//,
   }, options);
+
+  // Inherit size from world
+  options.width  = (!options.autoSize && options.width)
+                   || ((world._opts && world._opts.renderW || 256) / options.scale);
+  options.height = (!options.autoSize && options.height)
+                   || ((world._opts && world._opts.renderH || 256) / options.scale);
+
+  // Bind to world resize event for ThreeBox.js auto-resize.
+  world.on('resize', function (width, height) {
+    if (!options.autoSize) return;
+
+    width /= options.scale;
+    height /= options.scale;
+
+    // Resize render target
+    this.size(width, height);
+  }.bind(this));
 
   // Remember creation state.
   this._options = options;
@@ -27,19 +45,18 @@ ThreeRTT.World  = function (world, options) {
   this._scene  = this._stage.scene;
   this._camera = this._stage.camera;
 
-  // Bind to world resize event for ThreeBox + autoSize.
-  if (options.autoSize) {
-    world.on('resize', function (width, height) {
-      this.size(width * this.scaleFactor, height * this.scaleFactor);
-    }.bind(this));
-  }
-
   // Add to RTT queue at specified order.
-  this.queue = ThreeRTT.RenderQueue(world);
+  this.queue = ThreeRTT.RenderQueue.bind(world);
   this.queue.add(this);
+
+  // Update sizing state
+  this.size(options.width, options.height, true);
 };
 
-ThreeRTT.World.prototype = _.extend({}, tQuery.World.prototype, {
+// All non-ordered passes go last, in order of addition.
+ThreeRTT.World.sequence = 100000;
+
+ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype, {
 
   // Return the stage object.
   stage: function () {
@@ -51,14 +68,68 @@ ThreeRTT.World.prototype = _.extend({}, tQuery.World.prototype, {
     return this._stage.target;
   },
 
+  // Change the autosize behavior.
+  autoSize: function (autoSize) {
+    if (autoSize !== undefined) {
+      this._options.autoSize = autoSize;
+    }
+    return this._options.autoSize;
+  },
+
+  // Change the autoscale factor
+  scale: function (scale) {
+    if (scale) {
+      this._options.scale = scale;
+
+      if (this._options.autoSize) {
+        // Resize immediately based off parent scale.
+        var opts = this._world._opts,
+            width = opts.renderW / scale,
+            height = opts.renderH / scale;
+
+        this.size(width, height);
+      }
+
+      return this;
+    }
+
+    return this._options.scale;
+  },
+
   // Resize the RTT texture.
-  size: function (width, height) {
-    this._stage.size(width, height);
+  size: function (width, height, ignore) {
+    if (width && height) {
+      this._options.width = width;
+      this._options.height = height;
+
+      // Compatibility with tQuery world
+      this._opts = {
+        renderW: width,
+        renderH: height//,
+      };
+
+      // Ignore on init.
+      ignore || this._stage.size(width, height);
+      return this;
+    }
+
+    return { width: this._options.width, height: this._options.height };
+  },
+
+  // Set/remove the default full-screen quad surface material
+  material: function (material) {
+    this._stage.material(material);
+    return this;
   },
 
   // Return the virtual texture for reading from this RTT stage.
   read: function (n) {
     return this._stage.read(n);
+  },
+
+  // Return uniform for reading from this render target
+  uniform: function () {
+    return this._stage.uniform();
   },
 
   // Render this world.
@@ -86,5 +157,11 @@ ThreeRTT.World.prototype = _.extend({}, tQuery.World.prototype, {
   	this.trigger('destroy');
 
     return this;
-  },
+  }
 });
+
+// Make it pluginable.
+tQuery.pluginsInstanceOn(ThreeRTT.World);
+
+// Make it eventable.
+tQuery.MicroeventMixin(ThreeRTT.World.prototype)

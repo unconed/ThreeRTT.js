@@ -1,12 +1,36 @@
 /**
  * Helper for making ShaderMaterials that read from textures and write out processed fragments.
  */
-ThreeRTT.FragmentMaterial = function (renderTarget, fragmentShader, textures, uniforms) {
+ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, uniforms) {
   textures = textures || {};
-  var i = 0;
 
-  // Accept both Stage and RenderTarget classes
-  renderTarget = ThreeRTT.toTarget(renderTarget);
+  // Autoname texture uniforms as texture1, texture2, ...
+  function textureName(j) {
+    return 'texture' + (j + 1);
+  }
+
+  // Allow for array of textures.
+  if (textures instanceof Array) {
+    var object = {};
+    _.each(textures, function (texture, j) {
+      object[textureName(i)] = texture;
+    });
+    textures = object;
+  }
+  // Allow passing single texture/object
+  else if (textures.constructor != Object) {
+    textures = { texture1: textures };
+  }
+
+  // Accept one or more render targets as input for reading.
+  if (!(renderTargets instanceof Array)) {
+    renderTargets = [renderTargets];
+  }
+
+  // Accept World/Stage/RenderTarget classes
+  renderTargets = _.map(renderTargets, function (target) {
+    return ThreeRTT.toTarget(target);
+  });
 
   // Add sample step uniform.
   uniforms = _.extend(uniforms || {}, {
@@ -20,26 +44,47 @@ ThreeRTT.FragmentMaterial = function (renderTarget, fragmentShader, textures, un
   _.each(textures, function (texture, key) {
     uniforms[key] = {
       type: 't',
-      value: i++,
-      texture: texture//,
+      texture: ThreeRTT.toTexture(texture)//,
     };
   });
 
-  // Use render target as input texture by default.
-  if (!uniforms.texture) {
-    uniforms.texture = {
-      type: 't',
-      value: i++,
-      texture: renderTarget.read()//,
-    };
+  // Use render targets as input textures unless overridden.
+  _.each(renderTargets, function (target, j) {
+    // Create texture1, texture2, ... uniforms.
+    var key = textureName(j);
+    if (!uniforms[key]) {
+      uniforms[key] = {
+        type: 't',
+        texture: target.read()//,
+      };
+    }
+  });
+
+  // Assign texture indices to uniforms.
+  var i = 0;
+  _.each(uniforms, function (uniform, key) {
+    if (uniform.type == 't') {
+      return uniform.value = i++;
+    }
+    if (uniform.type == 'tv') {
+      uniform.value = i;
+      i += uniform.texture.length;
+    }
+  });
+
+  // Alias 'texture1' to 'texture'.
+  if (uniforms.texture1 && !uniforms.texture) {
+    uniforms.texture = uniforms.texture1;
   }
 
-  // Update sampleStep uniform on render.
-  renderTarget.on('render', function () {
+  console.log(fragmentShader, uniforms);
+
+  // Update sampleStep uniform on render of source.
+  renderTargets[0].on('render', function () {
     var value = uniforms.sampleStep.value;
 
-    value.x = 1 / (renderTarget.width - 1);
-    value.y = 1 / (renderTarget.height - 1)
+    value.x = 1 / (renderTargets[0].width - 1);
+    value.y = 1 / (renderTargets[0].height - 1)
   });
 
   // Lookup shaders and build material

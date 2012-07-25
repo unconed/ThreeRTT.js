@@ -1,35 +1,50 @@
 /**
- * Create a render-to-texture world in this world.
+ * Create a render-to-texture world for this world.
  */
 tQuery.World.register('rtt', function (options) {
   return tQuery.createRTT(this, options);
 });
 
 /**
- * Create a fragment material in this world.
+ * Add a surface showing a render-to-texture surface to this world.
+ */
+tQuery.World.register('compose', function (rtts, fragmentShader, textures, uniforms) {
+  tQuery.composeRTT(this, rtts, fragmentShader, textures, uniforms);
+  return this;
+});
+
+/**
+ * Apply a fragment material to this RTT world.
  */
 ThreeRTT.World.register('fragment', function (fragmentShader, textures, uniforms) {
-  var material = tQuery.createFragmentMaterial(this, fragmentShader, textures, uniforms);
-  this.stage.material(material);
-  return material;
+  this.material(tQuery.createFragmentMaterial(this, fragmentShader, textures, uniforms));
+  return this;
 });
 
 /**
- * Create a raytrace material in this world.
+ * Apply a raytrace material to this RTT world.
  */
 ThreeRTT.World.register('raytrace', function (fragmentShader, textures, uniforms) {
-  var material = tQuery.createRaytraceMaterial(this, fragmentShader, textures, uniforms);
-  this.stage.material(material);
-  return material;
+  this.material(tQuery.createRaytraceMaterial(this, fragmentShader, textures, uniforms));
+  return this;
 });
 
 /**
- * Create a downsample material in this given world, sampling from the given world.
+ * Apply a downsample material to this RTT world, sampling from the given world.
  */
 ThreeRTT.World.register('downsample', function (worldFrom) {
-  var material = tQuery.createFragmentMaterial(this, worldFrom);
-  this.stage.material(material);
-  return material;
+  // Force this world to right scale (will autosize)
+  var scale = worldFrom.scale();
+  this.scale(scale * 2);
+
+  // Force this world to right size now if not autosizing
+  if (!worldFrom.autoSize) {
+    var size = worldFrom.size();
+    this.size(size.width / 2, size.height / 2);
+  }
+
+  this.material(tQuery.createDownsampleMaterial(worldFrom, this));
+  return this;
 });
 
 /**
@@ -37,28 +52,33 @@ ThreeRTT.World.register('downsample', function (worldFrom) {
  */
 tQuery.register('createRTT', function (world, options) {
   // Create new RTT world.
-  var world = new ThreeRTT.World(options);
+  return new ThreeRTT.World(world, options);
+});
 
-  // Add helper methods
+/**
+ * Create a surface showing a render-to-texture image in this world.
+ */
+tQuery.register('composeRTT', function (world, rtts, fragmentShader, textures, uniforms) {
+  return new ThreeRTT.Compose(world.tScene(), rtts, fragmentShader, textures, uniforms);
 });
 
 /**
  * Create a FragmentMaterial.
  */
-tQuery.register('createFragmentMaterial', function (world, fragmentShader, textures, uniforms) {
-  return new ThreeRTT.FragmentMaterial(world.target(), fragmentShader, textures, uniforms);
+tQuery.register('createFragmentMaterial', function (worlds, fragmentShader, textures, uniforms) {
+  return new ThreeRTT.FragmentMaterial(worlds, fragmentShader, textures, uniforms);
 });
 
 /**
  * Create a RaytraceMaterial.
  */
 tQuery.register('createRaytraceMaterial', function (world, fragmentShader, textures, uniforms) {
-  return new ThreeRTT.RaytraceMaterial(world.target(), fragmentShader, textures, uniforms);
+  return new ThreeRTT.RaytraceMaterial(world, fragmentShader, textures, uniforms);
 });
 
 /**
  * Create a DownsampleMaterial.
  */
 tQuery.register('createDownsampleMaterial', function (worldFrom, worldTo) {
-  return new ThreeRTT.DownsampleMaterial(worldFrom.target(), worldTo.target());
+  return new ThreeRTT.DownsampleMaterial(worldFrom, worldTo);
 });

@@ -10,7 +10,7 @@ ThreeRTT.Camera = function (options) {
     fov: 85,
     near: .01,
     ortho: false,
-    scale: 1,
+    scale: 1//,
   }, options);
 
   if (options.ortho) {

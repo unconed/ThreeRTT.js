@@ -3,6 +3,25 @@
  */
 ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, uniforms) {
 
+  // Autoname texture uniforms as texture1, texture2, ...
+  function textureName(j) {
+    return 'texture' + (j + 1);
+  }
+
+  // Allow for array of textures.
+  if (textures instanceof Array) {
+    var object = {};
+    _.each(textures, function (texture, j) {
+      // Autoname texture uniforms as texture1, texture2, ...
+      var key = textureName(j);
+      object[key] = texture;
+    });
+  }
+  // Allow passing single texture/object
+  else if (textures.constructor != Object) {
+    textures = { texture1: textures };
+  }
+
   // Accept both Stage and RenderTarget classes
   renderTarget = ThreeRTT.toTarget(renderTarget);
 
@@ -11,7 +30,7 @@ ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, un
     cameraViewport: {
       type: 'v2',
       value: new THREE.Vector2()//,
-    }//,
+    },
     cameraWorld: {
       type: 'm4',
       value: new THREE.Matrix4()//,
@@ -24,7 +43,7 @@ ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, un
     uniforms[key] = {
       type: 't',
       value: i++,
-      texture: texture//,
+      texture: ThreeRTT.toTexture(texture)//,
     };
   });
 
