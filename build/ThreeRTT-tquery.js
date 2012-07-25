@@ -126,13 +126,12 @@ ThreeRTT.toTarget = function (rtt) {
   return rtt;
 }
 
-// Convert World/Stage/RenderTarget into Texture if necessary.
-ThreeRTT.toTexture = function (rtt) {
+// Convert World/Stage/RenderTarget into texture uniform.
+ThreeRTT.toTexture = function (rtt, i) {
   // Convert World/Stage
   rtt = ThreeRTT.toTarget(rtt);
-  // Convert virtual RenderTarget object
+  // Convert virtual RenderTarget object to uniform
   if (ThreeRTT.RenderTarget && (rtt instanceof ThreeRTT.RenderTarget)) return rtt.read();
-  return rtt;
 }
 
 // Make microevent methods chainable.
@@ -209,6 +208,11 @@ ThreeRTT.Stage.prototype = {
   // Get texture for render-to-texture output delayed by n frames.
   read: function (n) {
     return this.target.read(n);
+  },
+
+  // Return uniform for reading from this render target
+  uniform: function () {
+    return this.target.uniform();
   },
 
   // Render virtual render target.
@@ -328,9 +332,6 @@ ThreeRTT.RenderTarget = function (renderer, options) {
   }, options);
   this.renderer = renderer;
 
-  // Number of buffers = history + read/write
-  this.buffers = this.options.history + 2;
-
   // Make sure mip-mapping is disabled for non-power-of-two targets.
   if (!ThreeRTT.isPowerOfTwo(options.width) ||
       !ThreeRTT.isPowerOfTwo(options.height)) {
@@ -338,6 +339,9 @@ ThreeRTT.RenderTarget = function (renderer, options) {
       options.texture.minFilter = THREE.LinearFilter;
     }
   }
+
+  // Number of buffers = history + read/write
+  this.history(this.options.history, true);
 
   // Set size and allocate render targets.
   this.size(options.width, options.height);
@@ -355,6 +359,18 @@ ThreeRTT.RenderTarget.prototype = {
   // Retrieve real render target for writing/rendering to.
   write: function () {
     return this.targets[this.index];
+  },
+
+  // Retrieve / change history count
+  history: function (history, ignore) {
+    if (history !== undefined) {
+      this._history = history;
+      this.buffers = history + 2;
+
+      // Refresh/allocate targets.
+      ignore || this.allocate();
+    }
+    return this._history;
   },
 
   // Retrieve / change size
@@ -493,7 +509,34 @@ ThreeRTT.RenderTarget.prototype = {
 
     // Advance render buffers so newly rendered frame is at .read(0).
     this.options.autoAdvance && this.advance();
-  }
+  },
+
+  // Return uniform for reading from this renderTarget.
+  uniform: function (i) {
+    var n = this.history();
+    if (n) {
+      // Expose frame history as array of textures.
+      var textures = [];
+      _.loop(n + 1, function (j) {
+        textures.push(this.read(-j));
+      }.bind(this));
+      return {
+        type: 'tv',
+        value: i,
+        texture: textures,
+        count: n + 1//,
+      };
+    }
+    else {
+      // No history, expose a single read texture.
+      return {
+        type: 't',
+        value: i,
+        texture: this.read(),
+        count: 1//,
+      };
+    }
+  }//,
 
 };
 
@@ -510,7 +553,6 @@ ThreeRTT.ScreenGeometry = function () {
  */
 ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, uniforms) {
   textures = textures || {};
-  var i = 0;
 
   // Autoname texture uniforms as texture1, texture2, ...
   function textureName(j) {
@@ -552,7 +594,6 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   _.each(textures, function (texture, key) {
     uniforms[key] = {
       type: 't',
-      value: i++,
       texture: ThreeRTT.toTexture(texture)//,
     };
   });
@@ -564,9 +605,20 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     if (!uniforms[key]) {
       uniforms[key] = {
         type: 't',
-        value: i++,
         texture: target.read()//,
       };
+    }
+  });
+
+  // Assign texture indices to uniforms.
+  var i = 0;
+  _.each(uniforms, function (uniform, key) {
+    if (uniform.type == 't') {
+      return uniform.value = i++;
+    }
+    if (uniform.type == 'tv') {
+      uniform.value = i;
+      i += uniform.texture.length;
     }
   });
 
@@ -574,6 +626,8 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   if (uniforms.texture1 && !uniforms.texture) {
     uniforms.texture = uniforms.texture1;
   }
+
+  console.log(fragmentShader, uniforms);
 
   // Update sampleStep uniform on render of source.
   renderTargets[0].on('render', function () {
@@ -833,6 +887,11 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
   // Return the virtual texture for reading from this RTT stage.
   read: function (n) {
     return this._stage.read(n);
+  },
+
+  // Return uniform for reading from this render target
+  uniform: function () {
+    return this._stage.uniform();
   },
 
   // Render this world.

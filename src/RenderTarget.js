@@ -243,7 +243,7 @@ ThreeRTT.RenderTarget.prototype = {
         count: 1//,
       };
     }
-  },
+  }//,
 
 };
 
