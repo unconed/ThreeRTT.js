@@ -1,5 +1,6 @@
 #!/bin/bash
 VENDOR="
+vendor/underscore.js
 vendor/microevent.js
 "
 
@@ -27,6 +28,8 @@ shaders/builtin.glsl.html
 
 cat $VENDOR $SRC > build/ThreeRTT.js
 cat $VENDOR $SRC $TQUERY > build/ThreeRTT-tquery.js
+cat $SRC > build/ThreeRTT-core.js
+cat $SRC $TQUERY > build/ThreeRTT-core-tquery.js
 cat $SHADERS > build/ThreeRTT.glsl.html
 
 curl --data-urlencode "js_code@build/ThreeRTT.js" 	\
