@@ -7,6 +7,7 @@ ThreeRTT.Compose = function (scene, rtts, fragmentShader, textures, uniforms) {
   var material = new ThreeRTT.FragmentMaterial(rtts, fragmentShader, textures, uniforms);
   var geometry = new ThreeRTT.ScreenGeometry();
   var mesh = new THREE.Mesh(geometry, material);
+  mesh.frustumCulled = false;
   scene.add(mesh);
 
   // Remember scene/mesh association.
