@@ -13,12 +13,14 @@ ThreeRTT provides smart render targets backed by multiple buffers, providing tra
 
 When used with tQuery, a 'render to texture' world object is provided which hooks into the rendering pipeline and can be sized automatically to the viewport.
 
-Includes: microevent.js (Jerome Etienne)
+Depends on: underscore.js (Jeremy Ashkenas), microevent.js (Jerome Etienne)
 
 Builds:
 
- * ThreeRTT: microevent + core
- * ThreeRTT-tquery: microevent + core + tQuery plug-in
+ * ThreeRTT: dependencies + core
+ * ThreeRTT-tquery: dependencies + core + tQuery plug-in
+ * ThreeRTT-core: core
+ * ThreeRTT-core-tquery: core + tQuery plug-in
 
 The built-in shaders are located in `build/ThreeRTT.glsl.html` and must be included in your HTML for ThreeRTT to work.
 

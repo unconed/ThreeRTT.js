@@ -17,41 +17,6 @@ ThreeRTT.getShader = function (id) {
   return elem && elem.innerText || id;
 };
 
-// Simple array/object iterator.
-// (can be replaced with underscore.js)
-window._ = window._ || {};
-_.each = _.each || function (object, callback) {
-  if (object.forEach) {
-    return object.forEach(callback);
-  }
-  for (key in object) {
-    callback(object[key], key, object);
-  }
-};
-
-// Simple object extender
-// (can be replaced with underscore.js)
-_.extend = _.extend || function (destination) {
-  _.each([].slice.call(arguments, 1), function (source) {
-    for (var key in source) {
-      destination[key] = source[key];
-    }
-  });
-  return destination;
-}
-
-// Simple object mapper
-// (can be replaced with underscore.js)
-_.map = _.map || function (object, callback) {
-  var result = [];
-  if (object) {
-    _.each(object, function (value, key) {
-      result.push(callback(value, key));
-    });
-  }
-  return result;
-};
-
 // Simple loop helper
 _.loop = function (n, callback) {
   for (var i = 0; i < n; ++i) callback(i);
