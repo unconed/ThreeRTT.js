@@ -41,3 +41,13 @@ curl --data-urlencode "js_code@build/ThreeRTT-tquery.js" 	\
 	-d "output_format=text&output_info=compiled_code&compilation_level=SIMPLE_OPTIMIZATIONS" \
 	http://closure-compiler.appspot.com/compile	\
 	> build/ThreeRTT-tquery.min.js
+
+curl --data-urlencode "js_code@build/ThreeRTT-core.js" 	\
+	-d "output_format=text&output_info=compiled_code&compilation_level=SIMPLE_OPTIMIZATIONS" \
+	http://closure-compiler.appspot.com/compile	\
+	> build/ThreeRTT-core.min.js
+
+curl --data-urlencode "js_code@build/ThreeRTT-core-tquery.js" 	\
+	-d "output_format=text&output_info=compiled_code&compilation_level=SIMPLE_OPTIMIZATIONS" \
+	http://closure-compiler.appspot.com/compile	\
+	> build/ThreeRTT-core-tquery.min.js
