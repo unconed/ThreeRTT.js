@@ -40,6 +40,7 @@ ThreeRTT.Stage.prototype = {
       // Spawn fullscreen quad.
       if (!this._surface) {
         this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+        this._surface.frustumCulled = false;
         this.scene.add(this._surface);
       }
       this._surface.material = material;
