@@ -82,12 +82,12 @@ rtt.render();
 renderer.render(scene, camera);
 ```
 
-Alternatively, you may call `stage.target.read()` to retrieve a virtual render target for use as a texture. Call `.read(-1)`, `.read(-2)` to access history frames.
+Alternatively, you may call `rtt.read()` to retrieve a virtual render target for use as a texture. Call `.read(-1)`, `.read(-2)` to access history frames.
 
 Image feedback effect (tQuery)
 ---
 
-Create an isolated render-to-texture world by calling `.rtt()` and specify a fragment shader to render using `.fragment()`. Specify a literal piece of fragment shader code, or the ID of a script tag containing the source code. Optionally add custom textures and uniforms. You can access the `texture` sampler2D uniform to read from the previously rendered frame:
+Create an isolated render-to-texture world by calling `.rtt()`, which will be autosized to the framebuffer. Specify a fragment shader to render using `.fragment()`. Specify a literal piece of fragment shader code, or the ID of a script tag containing the source code. Optionally add custom textures and uniforms. You can access the `texture` sampler2D uniform to read from the previously rendered frame:
 
 ```
 var rtt = world.rtt().fragment(fragmentShader);
