@@ -1,6 +1,6 @@
 // Check dependencies.
 (function (deps) {
-  for (i in deps) {
+  for (var i in deps) {
     if (!window[i]) throw "Error: ThreeRTT requires " + deps[i];
   }
 })({
@@ -101,6 +101,7 @@ ThreeRTT.Stage.prototype = {
       // Spawn fullscreen quad.
       if (!this._surface) {
         this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+        this._surface.frustumCulled = false;
         this.scene.add(this._surface);
       }
       this._surface.material = material;
@@ -162,6 +163,7 @@ ThreeRTT.Compose = function (scene, rtts, fragmentShader, textures, uniforms) {
   var material = new ThreeRTT.FragmentMaterial(rtts, fragmentShader, textures, uniforms);
   var geometry = new ThreeRTT.ScreenGeometry();
   var mesh = new THREE.Mesh(geometry, material);
+  mesh.frustumCulled = false;
   scene.add(mesh);
 
   // Remember scene/mesh association.
