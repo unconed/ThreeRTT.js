@@ -1,5 +1,5 @@
 // Check dependencies.
-(function (deps) {
+;(function (deps) {
   for (var i in deps) {
     if (!window[i]) throw "Error: ThreeRTT requires " + deps[i];
   }

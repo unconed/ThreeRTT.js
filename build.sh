@@ -32,6 +32,7 @@ cat $SRC > build/ThreeRTT-core.js
 cat $SRC $TQUERY > build/ThreeRTT-core-tquery.js
 cat $SHADERS > build/ThreeRTT.glsl.html
 
+if [ -z "$SKIP_MINIFY" ]; then
 curl --data-urlencode "js_code@build/ThreeRTT.js" 	\
 	-d "output_format=text&output_info=compiled_code&compilation_level=SIMPLE_OPTIMIZATIONS" \
 	http://closure-compiler.appspot.com/compile	\
@@ -51,3 +52,4 @@ curl --data-urlencode "js_code@build/ThreeRTT-core-tquery.js" 	\
 	-d "output_format=text&output_info=compiled_code&compilation_level=SIMPLE_OPTIMIZATIONS" \
 	http://closure-compiler.appspot.com/compile	\
 	> build/ThreeRTT-core-tquery.min.js
+fi

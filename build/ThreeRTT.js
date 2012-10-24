@@ -79,7 +79,7 @@ MicroEvent.mixin	= function(destObject){
 if( typeof module !== "undefined" && ('exports' in module)){
 	module.exports	= MicroEvent
 }// Check dependencies.
-(function (deps) {
+;(function (deps) {
   for (var i in deps) {
     if (!window[i]) throw "Error: ThreeRTT requires " + deps[i];
   }
