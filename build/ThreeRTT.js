@@ -105,7 +105,7 @@ _.loop = function (n, callback) {
 // Fetch shader from <script> tag by id
 ThreeRTT.getShader = function (id) {
   var elem = document.getElementById(id);
-  return elem && elem.innerText || id;
+  return elem && (elem.innerText || elem.textContent) || id;
 };
 // Check for a power of two.
 ThreeRTT.isPowerOfTwo = function (value) {
