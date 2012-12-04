@@ -824,6 +824,15 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     return this;
   },
 
+  // Update this world manually.
+  update: function () {
+    // If not autorendering
+    if (!this._autoRendering) {
+      // Render to write target.
+  	  this._stage.render();
+    }
+  },
+
   // Destroy/unlink this world.
   destroy: function () {
     // Remove stage.

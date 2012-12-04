@@ -67,7 +67,7 @@ var sphere = new THREE.Mesh(
   new THREE.SphereGeometry(1),
   new THREE.MeshBasicMaterial()
 );
-rtt.scene.add(sphere);
+rtt.tScene().add(sphere);
 ```
 
 Compose the rendered texture into the scene using the `Compose` helper:
