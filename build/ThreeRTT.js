@@ -641,9 +641,9 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   material.side = THREE.DoubleSide;
 
   // Disable depth buffer for RTT operations.
-  material.depthTest = false;
-  material.depthWrite = false;
-  material.transparent = true;
+  //material.depthTest = true;
+  //material.depthWrite = false;
+  //material.transparent = true;
 
   return material;
 };/**
