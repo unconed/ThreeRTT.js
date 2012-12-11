@@ -13,3 +13,14 @@ void main() {
     );
 }
 </script>
+
+<script type="application/x-glsl" id="rtt-process-test">
+uniform vec2 sampleStep;
+uniform sampler2D texture;
+varying vec2 vUV;
+
+void main() {
+  vec3 diff = texture2D(texture, vUV).xyz - texture2D(texture, vUV - sampleStep * 2.0).xyz;
+  gl_FragColor = vec4(diff * 50.0 + .5, 1.0);
+}
+</script>

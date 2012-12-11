@@ -481,7 +481,6 @@ ThreeRTT.ScreenGeometry = function () {
  * Helper for making ShaderMaterials that read from textures and write out processed fragments.
  */
 ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, uniforms) {
-  textures = textures || {};
 
   // Autoname texture uniforms as texture1, texture2, ...
   function textureName(j) {
@@ -497,7 +496,7 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     textures = object;
   }
   // Allow passing single texture/object
-  else if (textures.constructor != Object) {
+  else if (textures) {
     textures = { texture1: textures };
   }
 
@@ -545,7 +544,9 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   }
 
   // Update sampleStep uniform on render of source.
-  renderTargets[0].on('render', function () {
+  var callback;
+  renderTargets[0].on('render', callback = function () {
+    console.log('on render', renderTargets[0].width, renderTargets[0].height)
     var value = uniforms.sampleStep.value;
 
     value.x = 1 / (renderTargets[0].width - 1);
