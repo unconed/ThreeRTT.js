@@ -626,7 +626,6 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   // Update sampleStep uniform on render of source.
   var callback;
   renderTargets[0].on('render', callback = function () {
-    console.log('on render', renderTargets[0].width, renderTargets[0].height)
     var value = uniforms.sampleStep.value;
 
     value.x = 1 / (renderTargets[0].width - 1);
