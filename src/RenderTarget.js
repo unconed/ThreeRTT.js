@@ -31,7 +31,7 @@ ThreeRTT.RenderTarget = function (renderer, options) {
     texture:       {},
     clear:         { color: false, depth: true, stencil: true },
     clearColor:    0xFFFFFF,
-    clearAlpha:    0,
+    clearAlpha:    1,
     history:       0,
     scene:         null,
     camera:        null,
@@ -52,6 +52,9 @@ ThreeRTT.RenderTarget = function (renderer, options) {
 
   // Set size and allocate render targets.
   this.size(options.width, options.height);
+
+  // Clear buffer
+  this.clear();
 },
 
 ThreeRTT.RenderTarget.prototype = {
@@ -192,8 +195,16 @@ ThreeRTT.RenderTarget.prototype = {
         clear   = options.clear,
         renderer = this.renderer;
 
+    // Read old clearing state
+    var color = renderer.getClearColor().clone();
+    var alpha = renderer.getClearAlpha();
+
+    // Apple new clearing color
     renderer.setClearColorHex(options.clearColor, options.clearAlpha);
     renderer.clearTarget(this.write(), clear.color, clear.stencil, clear.depth);
+
+    // Reset state
+    renderer.setClearColor(color, alpha);
   },
 
   // Render to render target using given renderer.

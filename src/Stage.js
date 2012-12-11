@@ -28,7 +28,7 @@ ThreeRTT.Stage = function (renderer, options) {
 
   // Prepare full-screen quad to help render every pixel once (baking textures).
   if (options.material) {
-    this.material(true, options.material);
+    this.material(options.material);
   }
 }
 

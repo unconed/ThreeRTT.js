@@ -169,7 +169,7 @@ ThreeRTT.Stage = function (renderer, options) {
 
   // Prepare full-screen quad to help render every pixel once (baking textures).
   if (options.material) {
-    this.material(true, options.material);
+    this.material(options.material);
   }
 }
 
@@ -322,7 +322,7 @@ ThreeRTT.RenderTarget = function (renderer, options) {
     texture:       {},
     clear:         { color: false, depth: true, stencil: true },
     clearColor:    0xFFFFFF,
-    clearAlpha:    0,
+    clearAlpha:    1,
     history:       0,
     scene:         null,
     camera:        null,
@@ -343,6 +343,9 @@ ThreeRTT.RenderTarget = function (renderer, options) {
 
   // Set size and allocate render targets.
   this.size(options.width, options.height);
+
+  // Clear buffer
+  this.clear();
 },
 
 ThreeRTT.RenderTarget.prototype = {
@@ -483,8 +486,16 @@ ThreeRTT.RenderTarget.prototype = {
         clear   = options.clear,
         renderer = this.renderer;
 
+    // Read old clearing state
+    var color = renderer.getClearColor().clone();
+    var alpha = renderer.getClearAlpha();
+
+    // Apple new clearing color
     renderer.setClearColorHex(options.clearColor, options.clearAlpha);
     renderer.clearTarget(this.write(), clear.color, clear.stencil, clear.depth);
+
+    // Reset state
+    renderer.setClearColor(color, alpha);
   },
 
   // Render to render target using given renderer.
@@ -592,7 +603,7 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   _.each(textures, function (texture, key) {
     uniforms[key] = {
       type: 't',
-      texture: ThreeRTT.toTexture(texture)//,
+      value: ThreeRTT.toTexture(texture)//,
     };
   });
 
@@ -603,20 +614,8 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     if (!uniforms[key]) {
       uniforms[key] = {
         type: 't',
-        texture: target.read()//,
+        value: target.read()//,
       };
-    }
-  });
-
-  // Assign texture indices to uniforms.
-  var i = 0;
-  _.each(uniforms, function (uniform, key) {
-    if (uniform.type == 't') {
-      return uniform.value = i++;
-    }
-    if (uniform.type == 'tv') {
-      uniform.value = i;
-      i += uniform.texture.length;
     }
   });
 
@@ -624,8 +623,6 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   if (uniforms.texture1 && !uniforms.texture) {
     uniforms.texture = uniforms.texture1;
   }
-
-  console.log(fragmentShader, uniforms);
 
   // Update sampleStep uniform on render of source.
   renderTargets[0].on('render', function () {
@@ -641,11 +638,12 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     vertexShader:   ThreeRTT.getShader('generic-vertex-screen'),
     fragmentShader: ThreeRTT.getShader(fragmentShader || 'generic-fragment-texture')//,
   });
+  material.side = THREE.DoubleSide;
 
   // Disable depth buffer for RTT operations.
-  //material.depthTest = false;
-  //material.depthWrite = false;
-  //material.transparent = true;
+  material.depthTest = false;
+  material.depthWrite = false;
+  material.transparent = true;
 
   return material;
 };/**
