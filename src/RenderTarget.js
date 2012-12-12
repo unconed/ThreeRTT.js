@@ -62,7 +62,7 @@ ThreeRTT.RenderTarget.prototype = {
   // Retrieve virtual target for reading from, n frames back.
   read: function (n) {
     // Clamp history to available buffers minus write buffer.
-    n = Math.min(this.options.history, Math.abs(n || 0));
+    n = Math.max(0, Math.min(this.options.history, Math.abs(n || 0)));
     return this.virtuals[n];
   },
 
@@ -139,7 +139,9 @@ ThreeRTT.RenderTarget.prototype = {
   allocateVirtuals: function () {
     var original = this.targets[0],
         virtuals  = this.virtuals || [];
-        n = this.buffers - 1; // One buffer reserved for writing at any given time
+        n = Math.max(1, this.buffers - 1);
+        // One buffer reserved for writing at any given time,
+        // unless there is no history.
 
     // Keep virtual targets around if possible.
     if (n > virtuals.length) {
@@ -171,15 +173,16 @@ ThreeRTT.RenderTarget.prototype = {
         targets  = this.targets,
         virtuals = this.virtuals,
         index    = this.index,
-        n        = this.buffers;
+        n        = this.buffers,
+        v        = virtuals.length;
 
     // Advance cyclic index.
     this.index = index = (index + 1) % n;
 
     // Point virtual render targets to last rendered frame(s) in order.
-    _.loop(n - 1, function (i) {
+    _.loop(v, function (i) {
       var dst = virtuals[i],
-          src = targets[(n - 1 - i + index) % n];
+          src = targets[(v - i + index) % n];
 
       dst.__webglTexture      = src.__webglTexture;
       dst.__webglFramebuffer  = src.__webglFramebuffer;

@@ -95,24 +95,27 @@ ThreeRTT.Stage = function (renderer, options) {
 
 ThreeRTT.Stage.prototype = {
 
-  // Set/remove the default full-screen quad surface material
+  // Set/get the default full-screen quad surface material
   material: function (material) {
-    if (material) {
-      // Spawn fullscreen quad.
-      if (!this._surface) {
-        this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
-        this._surface.frustumCulled = false;
-        this.scene.add(this._surface);
+    if (material !== undefined) {
+      if (material) {
+        // Spawn fullscreen quad.
+        if (!this._surface) {
+          this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+          this._surface.frustumCulled = false;
+          this.scene.add(this._surface);
+        }
+        this._surface.material = material;
       }
-      this._surface.material = material;
-    }
-    else {
-      // Remove fullscreen quad.
-      this.scene.remove(this._surface);
-      this._surface = null;
-    }
+      else {
+        // Remove fullscreen quad.
+        this.scene.remove(this._surface);
+        this._surface = null;
+      }
 
-    return this;
+      return this;
+    }
+    return this._surface && this._surface.material;
   },
 
   // Resize render-to-texture
@@ -273,7 +276,7 @@ ThreeRTT.RenderTarget.prototype = {
   // Retrieve virtual target for reading from, n frames back.
   read: function (n) {
     // Clamp history to available buffers minus write buffer.
-    n = Math.min(this.options.history, Math.abs(n || 0));
+    n = Math.max(0, Math.min(this.options.history, Math.abs(n || 0)));
     return this.virtuals[n];
   },
 
@@ -350,7 +353,9 @@ ThreeRTT.RenderTarget.prototype = {
   allocateVirtuals: function () {
     var original = this.targets[0],
         virtuals  = this.virtuals || [];
-        n = this.buffers - 1; // One buffer reserved for writing at any given time
+        n = Math.max(1, this.buffers - 1);
+        // One buffer reserved for writing at any given time,
+        // unless there is no history.
 
     // Keep virtual targets around if possible.
     if (n > virtuals.length) {
@@ -382,15 +387,16 @@ ThreeRTT.RenderTarget.prototype = {
         targets  = this.targets,
         virtuals = this.virtuals,
         index    = this.index,
-        n        = this.buffers;
+        n        = this.buffers,
+        v        = virtuals.length;
 
     // Advance cyclic index.
     this.index = index = (index + 1) % n;
 
     // Point virtual render targets to last rendered frame(s) in order.
-    _.loop(n - 1, function (i) {
+    _.loop(v, function (i) {
       var dst = virtuals[i],
-          src = targets[(n - 1 - i + index) % n];
+          src = targets[(v - i + index) % n];
 
       dst.__webglTexture      = src.__webglTexture;
       dst.__webglFramebuffer  = src.__webglFramebuffer;
@@ -676,4 +682,52 @@ ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, un
     vertexShader:   ThreeRTT.getShader('generic-vertex-screen'),
     fragmentShader: ThreeRTT.getShader(fragmentShader)//,
   });
-};
+};/**
+ * Debug/testing helper that displays the given rendertargets in a grid
+ */
+ThreeRTT.Display = function (gx, gy, targets) {
+  if (!(targets instanceof Array)) {
+    targets = [targets];
+  }
+
+  this.gx = gx;
+  this.gy = gy;
+  this.targets = targets;
+  this.n = targets.length;
+
+  THREE.Object3D.call(this);
+  this.make();
+}
+
+ThreeRTT.Display.prototype = _.extend(new THREE.Object3D(), {
+
+  make: function () {
+    var n = this.n,
+        gx = this.gx,
+        gy = this.gy,
+        targets = this.targets;
+
+    var igx = (gx - 1) / 2,
+        igy = (gy - 1) / 2;
+
+    var geometry = new THREE.PlaneGeometry(1, 1, 1, 1);
+    var i = 0;
+    for (var y = 0; i < n && y < gy; ++y) {
+      for (var x = 0; i < n && x < gx; ++x, ++i) {
+        var material = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          map: targets[i].read(),
+          fog: false
+        });
+        material.side = THREE.DoubleSide;
+
+        var mesh = new THREE.Mesh(geometry, material);
+        this.add(mesh);
+
+        if (gx > 1) mesh.position.x = -igx + x;
+        if (gy > 1) mesh.position.y =  igy - y;
+      }
+    }
+  }
+
+});

@@ -47,7 +47,7 @@ ThreeRTT.World  = function (world, options) {
 
   // Add to RTT queue at specified order.
   this.queue = ThreeRTT.RenderQueue.bind(world);
-  this.queue.add(this);
+  if (options.autoRendering) this.queue.add(this);
 
   // Update sizing state
   this.size(options.width, options.height, true);
@@ -118,8 +118,7 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
 
   // Set/remove the default full-screen quad surface material
   material: function (material) {
-    this._stage.material(material);
-    return this;
+    return this._stage.material(material);
   },
 
   // Return the virtual texture for reading from this RTT stage.
@@ -134,23 +133,10 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
 
   // Render this world.
   render: function () {
-
-  	// Render the scene 
-  	if (this._autoRendering) {
-      // Render to write target.
-  	  this._stage.render();
-	  }
+    // Render to write target.
+    this._stage.render();
 
     return this;
-  },
-
-  // Update this world manually.
-  update: function () {
-    // If not autorendering
-    if (!this._autoRendering) {
-      // Render to write target.
-  	  this._stage.render();
-    }
   },
 
   // Destroy/unlink this world.

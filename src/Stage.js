@@ -34,24 +34,27 @@ ThreeRTT.Stage = function (renderer, options) {
 
 ThreeRTT.Stage.prototype = {
 
-  // Set/remove the default full-screen quad surface material
+  // Set/get the default full-screen quad surface material
   material: function (material) {
-    if (material) {
-      // Spawn fullscreen quad.
-      if (!this._surface) {
-        this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
-        this._surface.frustumCulled = false;
-        this.scene.add(this._surface);
+    if (material !== undefined) {
+      if (material) {
+        // Spawn fullscreen quad.
+        if (!this._surface) {
+          this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+          this._surface.frustumCulled = false;
+          this.scene.add(this._surface);
+        }
+        this._surface.material = material;
       }
-      this._surface.material = material;
-    }
-    else {
-      // Remove fullscreen quad.
-      this.scene.remove(this._surface);
-      this._surface = null;
-    }
+      else {
+        // Remove fullscreen quad.
+        this.scene.remove(this._surface);
+        this._surface = null;
+      }
 
-    return this;
+      return this;
+    }
+    return this._surface && this._surface.material;
   },
 
   // Resize render-to-texture
