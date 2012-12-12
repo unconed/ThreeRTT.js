@@ -14,6 +14,7 @@ src/ScreenGeometry.js
 src/FragmentMaterial.js
 src/DownsampleMaterial.js
 src/RaytraceMaterial.js
+src/Display.js
 "
 
 TQUERY="
