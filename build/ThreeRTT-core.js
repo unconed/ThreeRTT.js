@@ -570,7 +570,7 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     var wrapT = texture.wrapT;
 
     var offset = {
-      1000: 1, // repeat
+      1000: 0, // repeat
       1001: 1, // clamp
       1002: 0, // mirrored
     };
