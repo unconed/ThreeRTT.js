@@ -29,7 +29,7 @@ ThreeRTT.RenderTarget = function (renderer, options) {
     width:         256,
     height:        256,
     texture:       {},
-    clear:         { color: false, depth: true, stencil: true },
+    clear:         { color: false, depth: false, stencil: false },
     clearColor:    0xFFFFFF,
     clearAlpha:    1,
     history:       0,
@@ -243,8 +243,7 @@ ThreeRTT.RenderTarget.prototype = {
       }.bind(this));
       return {
         type: 'tv',
-        value: i,
-        texture: textures,
+        value: textures,
         count: n + 1//,
       };
     }

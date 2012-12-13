@@ -36,9 +36,17 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
   });
 
   // Lookup shaders and build material
-  return new THREE.ShaderMaterial({
+  var material = new THREE.ShaderMaterial({
     uniforms:       uniforms,
     vertexShader:   ThreeRTT.getShader('rtt-vertex-downsample'),
     fragmentShader: ThreeRTT.getShader('generic-fragment-texture')//,
   });
+
+  // Disable depth buffer for RTT operations by default.
+  material.side = THREE.DoubleSide;
+  material.depthTest = false;
+  material.depthWrite = false;
+  material.transparent = true;
+
+  return material;
 };

@@ -116,9 +116,64 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     return { width: this._options.width, height: this._options.height };
   },
 
-  // Set/remove the default full-screen quad surface material
-  material: function (material) {
-    return this._stage.material(material);
+  // Get stage options
+  options: function () {
+    return this._stage.options();
+  },
+
+  // Reset all passes
+  reset: function () {
+    this._stage.reset();
+    return this;
+  },
+
+  // Add an iterated rendering pass
+  iterate: function (n, fragmentShader, textures, uniforms) {
+    var material = fragmentShader instanceof THREE.Material
+                 ? fragmentShader
+                 : tQuery.createFragmentMaterial(
+                    this, fragmentShader, textures, uniforms);
+
+    this._stage.iterate(n, material);
+    return this;
+  },
+
+  // Add a fragment rendering pass
+  fragment: function (fragmentShader, textures, uniforms) {
+    var material = fragmentShader instanceof THREE.Material
+                 ? fragmentShader
+                 : tQuery.createFragmentMaterial(
+                    this, fragmentShader, textures, uniforms);
+
+    this._stage.fragment(material);
+    return this;
+  },
+
+  // Add a raytrace rendering pass
+  raytrace: function (fragmentShader, textures, uniforms) {
+    var material = fragmentShader instanceof THREE.Material
+                 ? fragmentShader
+                 : tQuery.createRaytraceMaterial(
+                    this, fragmentShader, textures, uniforms);
+
+    this._stage.fragment(material);
+    return this;
+  },
+
+  // Add a downsample rendering pass
+  downsample: function (worldFrom) {
+    // Force this world to right scale (will autosize)
+    var scale = worldFrom.scale();
+    this.scale(scale * 2);
+
+    // Force this world to right size now if not autosizing
+    if (!worldFrom.autoSize) {
+      var size = worldFrom.size();
+      this.size(size.width / 2, size.height / 2);
+    }
+
+    var material = tQuery.createDownsampleMaterial(worldFrom, this);
+    this._stage.fragment(material);
   },
 
   // Return the virtual texture for reading from this RTT stage.

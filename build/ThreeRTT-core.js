@@ -66,8 +66,7 @@ ThreeRTT.Stage = function (renderer, options) {
   options = _.extend({
     history:  0,
     camera:   {},
-    material: false, 
-    scene:    null//,
+    scene:    null,
   }, options);
 
   // Prefill aspect ratio.
@@ -81,41 +80,46 @@ ThreeRTT.Stage = function (renderer, options) {
   // Create virtual render target, passthrough options.
   this.target = new ThreeRTT.RenderTarget(renderer, options);
 
-  // If using buffered mode, draw the last rendered frame as background 
-  // to avoid flickering unless overridden.
-  if (options.history >= 0) {
-    options.material = options.material || new ThreeRTT.FragmentMaterial(this);
-  }
-
-  // Prepare full-screen quad to help render every pixel once (baking textures).
-  if (options.material) {
-    this.material(options.material);
-  }
+  // Prepare data structures.
+  this.reset();
 }
 
 ThreeRTT.Stage.prototype = {
 
-  // Set/get the default full-screen quad surface material
-  material: function (material) {
-    if (material !== undefined) {
-      if (material) {
-        // Spawn fullscreen quad.
-        if (!this._surface) {
-          this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
-          this._surface.frustumCulled = false;
-          this.scene.add(this._surface);
-        }
-        this._surface.material = material;
-      }
-      else {
-        // Remove fullscreen quad.
-        this.scene.remove(this._surface);
-        this._surface = null;
-      }
+  options: function () {
+    return this.target.options;
+  },
 
-      return this;
-    }
-    return this._surface && this._surface.material;
+  reset: function () {
+    _.each(this.surfaces, function (surface) {
+      this.scene.remove(surface);
+    }.bind(this));
+
+    this.passes   = [];
+    this.surfaces = [];
+  },
+
+  // Add iteration pass
+  iterate: function (n, material) {
+
+    var surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+    surface.frustumCulled = false;
+    surface.visible = false;
+    surface.material = material;
+
+    this.scene.add(surface);
+
+    this.passes.push(n);
+    this.surfaces.push(surface);
+
+    return this;
+  },
+
+  // Add regular fragment pass
+  fragment: function (material) {
+    this.iterate(1, material);
+
+    return this;
   },
 
   // Resize render-to-texture
@@ -138,7 +142,15 @@ ThreeRTT.Stage.prototype = {
   // Render virtual render target.
   render: function () {
 	  this.target.clear();
-    this.target.render(this.scene, this.camera);
+
+    _.each(this.passes, function (n, i) {
+      this.surfaces[i].visible = true;
+      _.loop(n, function () {
+        this.target.render(this.scene, this.camera);
+      }.bind(this));
+      this.surfaces[i].visible = false;
+    }.bind(this));
+
     return this;
   },
 
@@ -243,7 +255,7 @@ ThreeRTT.RenderTarget = function (renderer, options) {
     width:         256,
     height:        256,
     texture:       {},
-    clear:         { color: false, depth: true, stencil: true },
+    clear:         { color: false, depth: false, stencil: false },
     clearColor:    0xFFFFFF,
     clearAlpha:    1,
     history:       0,
@@ -457,8 +469,7 @@ ThreeRTT.RenderTarget.prototype = {
       }.bind(this));
       return {
         type: 'tv',
-        value: i,
-        texture: textures,
+        value: textures,
         count: n + 1//,
       };
     }
@@ -502,7 +513,9 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     textures = object;
   }
   // Allow passing single texture/object
-  else if (textures) {
+  else if (textures instanceof THREE.Texture
+        || textures instanceof ThreeRTT.World
+        || textures instanceof THREE.WebGLRenderTarget) {
     textures = { texture1: textures };
   }
 
@@ -552,10 +565,20 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   // Update sampleStep uniform on render of source.
   var callback;
   renderTargets[0].on('render', callback = function () {
+    var texture = renderTargets[0].options.texture;
+    var wrapS = texture.wrapS;
+    var wrapT = texture.wrapT;
+
+    var offset = {
+      1000: 1, // repeat
+      1001: 1, // clamp
+      1002: 0, // mirrored
+    };
+
     var value = uniforms.sampleStep.value;
 
-    value.x = 1 / (renderTargets[0].width - 1);
-    value.y = 1 / (renderTargets[0].height - 1)
+    value.x = 1 / (renderTargets[0].width - offset[wrapS]);
+    value.y = 1 / (renderTargets[0].height - offset[wrapT]);
   });
 
   // Lookup shaders and build material
@@ -564,12 +587,13 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     vertexShader:   ThreeRTT.getShader('generic-vertex-screen'),
     fragmentShader: ThreeRTT.getShader(fragmentShader || 'generic-fragment-texture')//,
   });
-  material.side = THREE.DoubleSide;
 
-  // Disable depth buffer for RTT operations.
-  //material.depthTest = true;
-  //material.depthWrite = false;
-  //material.transparent = true;
+  // Disable depth buffer for RTT operations by default.
+  material.side = THREE.DoubleSide;
+  material.depthTest = false;
+  material.depthWrite = false;
+  material.transparent = true;
+  material.blending = THREE.NoBlending;
 
   return material;
 };/**
@@ -610,11 +634,19 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
   });
 
   // Lookup shaders and build material
-  return new THREE.ShaderMaterial({
+  var material = new THREE.ShaderMaterial({
     uniforms:       uniforms,
     vertexShader:   ThreeRTT.getShader('rtt-vertex-downsample'),
     fragmentShader: ThreeRTT.getShader('generic-fragment-texture')//,
   });
+
+  // Disable depth buffer for RTT operations by default.
+  material.side = THREE.DoubleSide;
+  material.depthTest = false;
+  material.depthWrite = false;
+  material.transparent = true;
+
+  return material;
 };/**
  * Helper for making ShaderMaterials that raytrace in camera space per pixel.
  */
@@ -635,7 +667,9 @@ ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, un
     });
   }
   // Allow passing single texture/object
-  else if (textures.constructor != Object) {
+  else if (textures instanceof THREE.Texture
+        || textures instanceof ThreeRTT.World
+        || textures instanceof THREE.WebGLRenderTarget) {
     textures = { texture1: textures };
   }
 

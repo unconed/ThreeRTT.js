@@ -17,7 +17,9 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     textures = object;
   }
   // Allow passing single texture/object
-  else if (textures) {
+  else if (textures instanceof THREE.Texture
+        || textures instanceof ThreeRTT.World
+        || textures instanceof THREE.WebGLRenderTarget) {
     textures = { texture1: textures };
   }
 
@@ -67,10 +69,20 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   // Update sampleStep uniform on render of source.
   var callback;
   renderTargets[0].on('render', callback = function () {
+    var texture = renderTargets[0].options.texture;
+    var wrapS = texture.wrapS;
+    var wrapT = texture.wrapT;
+
+    var offset = {
+      1000: 1, // repeat
+      1001: 1, // clamp
+      1002: 0, // mirrored
+    };
+
     var value = uniforms.sampleStep.value;
 
-    value.x = 1 / (renderTargets[0].width - 1);
-    value.y = 1 / (renderTargets[0].height - 1)
+    value.x = 1 / (renderTargets[0].width - offset[wrapS]);
+    value.y = 1 / (renderTargets[0].height - offset[wrapT]);
   });
 
   // Lookup shaders and build material
@@ -79,12 +91,13 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
     vertexShader:   ThreeRTT.getShader('generic-vertex-screen'),
     fragmentShader: ThreeRTT.getShader(fragmentShader || 'generic-fragment-texture')//,
   });
-  material.side = THREE.DoubleSide;
 
-  // Disable depth buffer for RTT operations.
-  //material.depthTest = true;
-  //material.depthWrite = false;
-  //material.transparent = true;
+  // Disable depth buffer for RTT operations by default.
+  material.side = THREE.DoubleSide;
+  material.depthTest = false;
+  material.depthWrite = false;
+  material.transparent = true;
+  material.blending = THREE.NoBlending;
 
   return material;
 };

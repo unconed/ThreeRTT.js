@@ -18,7 +18,9 @@ ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, un
     });
   }
   // Allow passing single texture/object
-  else if (textures.constructor != Object) {
+  else if (textures instanceof THREE.Texture
+        || textures instanceof ThreeRTT.World
+        || textures instanceof THREE.WebGLRenderTarget) {
     textures = { texture1: textures };
   }
 

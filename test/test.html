@@ -59,6 +59,7 @@
         window.object = object;
         // Compose RTT into scene
         var compose = new ThreeRTT.Compose(scene, rtt);
+        compose.mesh.material.depthTest = true;
 
         scene.add(object);
       });

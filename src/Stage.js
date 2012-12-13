@@ -5,8 +5,7 @@ ThreeRTT.Stage = function (renderer, options) {
   options = _.extend({
     history:  0,
     camera:   {},
-    material: false, 
-    scene:    null//,
+    scene:    null,
   }, options);
 
   // Prefill aspect ratio.
@@ -20,41 +19,46 @@ ThreeRTT.Stage = function (renderer, options) {
   // Create virtual render target, passthrough options.
   this.target = new ThreeRTT.RenderTarget(renderer, options);
 
-  // If using buffered mode, draw the last rendered frame as background 
-  // to avoid flickering unless overridden.
-  if (options.history >= 0) {
-    options.material = options.material || new ThreeRTT.FragmentMaterial(this);
-  }
-
-  // Prepare full-screen quad to help render every pixel once (baking textures).
-  if (options.material) {
-    this.material(options.material);
-  }
+  // Prepare data structures.
+  this.reset();
 }
 
 ThreeRTT.Stage.prototype = {
 
-  // Set/get the default full-screen quad surface material
-  material: function (material) {
-    if (material !== undefined) {
-      if (material) {
-        // Spawn fullscreen quad.
-        if (!this._surface) {
-          this._surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
-          this._surface.frustumCulled = false;
-          this.scene.add(this._surface);
-        }
-        this._surface.material = material;
-      }
-      else {
-        // Remove fullscreen quad.
-        this.scene.remove(this._surface);
-        this._surface = null;
-      }
+  options: function () {
+    return this.target.options;
+  },
 
-      return this;
-    }
-    return this._surface && this._surface.material;
+  reset: function () {
+    _.each(this.surfaces, function (surface) {
+      this.scene.remove(surface);
+    }.bind(this));
+
+    this.passes   = [];
+    this.surfaces = [];
+  },
+
+  // Add iteration pass
+  iterate: function (n, material) {
+
+    var surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+    surface.frustumCulled = false;
+    surface.visible = false;
+    surface.material = material;
+
+    this.scene.add(surface);
+
+    this.passes.push(n);
+    this.surfaces.push(surface);
+
+    return this;
+  },
+
+  // Add regular fragment pass
+  fragment: function (material) {
+    this.iterate(1, material);
+
+    return this;
   },
 
   // Resize render-to-texture
@@ -77,7 +81,15 @@ ThreeRTT.Stage.prototype = {
   // Render virtual render target.
   render: function () {
 	  this.target.clear();
-    this.target.render(this.scene, this.camera);
+
+    _.each(this.passes, function (n, i) {
+      this.surfaces[i].visible = true;
+      _.loop(n, function () {
+        this.target.render(this.scene, this.camera);
+      }.bind(this));
+      this.surfaces[i].visible = false;
+    }.bind(this));
+
     return this;
   },
 
