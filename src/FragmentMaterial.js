@@ -81,8 +81,8 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
 
     var value = uniforms.sampleStep.value;
 
-    value.x = 1 / (renderTargets[0].width - offset[wrapS]||0);
-    value.y = 1 / (renderTargets[0].height - offset[wrapT]||0);
+    value.x = 1 / (renderTargets[0].width - (offset[wrapS]||0));
+    value.y = 1 / (renderTargets[0].height - (offset[wrapT]||0));
   });
 
   // Lookup shaders and build material
