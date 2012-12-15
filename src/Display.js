@@ -1,13 +1,13 @@
 /**
  * Debug/testing helper that displays the given rendertargets in a grid
  */
-ThreeRTT.Display = function (gx, gy, targets) {
+ThreeRTT.Display = function (targets, gx, gy) {
   if (!(targets instanceof Array)) {
     targets = [targets];
   }
 
-  this.gx = gx;
-  this.gy = gy;
+  this.gx = gx || targets.length;
+  this.gy = gy || 1;
   this.targets = targets;
   this.n = targets.length;
 
@@ -32,7 +32,7 @@ ThreeRTT.Display.prototype = _.extend(new THREE.Object3D(), {
       for (var x = 0; i < n && x < gx; ++x, ++i) {
         var material = new THREE.MeshBasicMaterial({
           color: 0xffffff,
-          map: targets[i].read(),
+          map: ThreeRTT.toTexture(targets[i]),
           fog: false
         });
         material.side = THREE.DoubleSide;

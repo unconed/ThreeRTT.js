@@ -67,13 +67,14 @@ var sphere = new THREE.Mesh(
   new THREE.SphereGeometry(1),
   new THREE.MeshBasicMaterial()
 );
-rtt.tScene().add(sphere);
+rtt.scene.add(sphere);
 ```
 
-Compose the rendered texture into the scene using the `Compose` helper:
+Compose the rendered texture into the world scene using the `Compose` helper:
 
 ```
-var compose = new ThreeRTT.Compose(scene, rtt);
+var compose = new ThreeRTT.Compose(rtt);
+scene.add(compose);
 ```
 
 Before rendering your Three.js scene, call .render() on the render-to-texture stage first.

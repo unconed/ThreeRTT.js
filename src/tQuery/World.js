@@ -127,6 +127,12 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     return this;
   },
 
+  // Add a painting rendering pass
+  paint: function (object) {
+    this._stage.paint(object);
+    return this;
+  },
+
   // Add an iterated rendering pass
   iterate: function (n, fragmentShader, textures, uniforms) {
     var material = fragmentShader instanceof THREE.Material

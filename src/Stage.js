@@ -30,26 +30,47 @@ ThreeRTT.Stage.prototype = {
   },
 
   reset: function () {
-    _.each(this.surfaces, function (surface) {
-      this.scene.remove(surface);
-    }.bind(this));
+    if (this.renderables) {
+      _.each(this.renderables, function (surface) {
+        this.scene.remove(surface);
+      }.bind(this));
+    }
 
     this.passes   = [];
-    this.surfaces = [];
+    this.renderables = [];
+  },
+
+  // Add object render pass
+  paint: function (object) {
+
+    // Create root to hold all objects for this pass
+    var root = new THREE.Object3D();
+    root.frustumCulled = false;
+    root.visible = true;
+
+    // Create a surface to render the last frame
+    var material = new ThreeRTT.FragmentMaterial(this, 'generic-fragment-texture');
+    var surface = this._surface(material);
+    root.add(surface);
+    root.add(object);
+
+    // Add root to scene and insert into pass list
+    this.scene.add(root);
+    this.passes.push(1);
+    this.renderables.push(root);
   },
 
   // Add iteration pass
   iterate: function (n, material) {
 
-    var surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
-    surface.frustumCulled = false;
+    // Create a surface to render the pass with
+    var surface = this._surface(material);
     surface.visible = false;
-    surface.material = material;
 
+    // Add surface to scene and insert into pass list
     this.scene.add(surface);
-
     this.passes.push(n);
-    this.surfaces.push(surface);
+    this.renderables.push(surface);
 
     return this;
   },
@@ -82,12 +103,17 @@ ThreeRTT.Stage.prototype = {
   render: function () {
 	  this.target.clear();
 
+    function toggle(object, value) {
+      object.visible = value;
+      _.each(object.children, function (object) { toggle(object, value); });
+    }
+
     _.each(this.passes, function (n, i) {
-      this.surfaces[i].visible = true;
-      _.loop(n, function () {
+      toggle(this.renderables[i], true);
+      _.loop(n, function (i) {
         this.target.render(this.scene, this.camera);
       }.bind(this));
-      this.surfaces[i].visible = false;
+      toggle(this.renderables[i], false);
     }.bind(this));
 
     return this;
@@ -106,5 +132,16 @@ ThreeRTT.Stage.prototype = {
     this.scene = null;
     this.camera = null;
     this.target = null;
-  }
+  },
+
+  // Generate full screen surface with default properties.
+  _surface: function (material) {
+    var surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+    surface.frustumCulled = false;
+    surface.material = material;
+    surface.renderDepth = Infinity;
+
+    return surface;
+  },
+
 }

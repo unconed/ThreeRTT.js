@@ -118,7 +118,7 @@ ThreeRTT.toTarget = function (rtt) {
   if (ThreeRTT.Stage && (rtt instanceof ThreeRTT.Stage)) return rtt.target;
   // tQuery world
   if (ThreeRTT.World && (rtt instanceof ThreeRTT.World)) return rtt.target();
-  // RenderTarget
+  // RenderTarget or texture
   return rtt;
 }
 
@@ -128,6 +128,7 @@ ThreeRTT.toTexture = function (rtt, i) {
   rtt = ThreeRTT.toTarget(rtt);
   // Convert virtual RenderTarget object to uniform
   if (ThreeRTT.RenderTarget && (rtt instanceof ThreeRTT.RenderTarget)) return rtt.read();
+  return rtt;
 }
 
 // Make microevent methods chainable.
@@ -171,26 +172,47 @@ ThreeRTT.Stage.prototype = {
   },
 
   reset: function () {
-    _.each(this.surfaces, function (surface) {
-      this.scene.remove(surface);
-    }.bind(this));
+    if (this.renderables) {
+      _.each(this.renderables, function (surface) {
+        this.scene.remove(surface);
+      }.bind(this));
+    }
 
     this.passes   = [];
-    this.surfaces = [];
+    this.renderables = [];
+  },
+
+  // Add object render pass
+  paint: function (object) {
+
+    // Create root to hold all objects for this pass
+    var root = new THREE.Object3D();
+    root.frustumCulled = false;
+    root.visible = true;
+
+    // Create a surface to render the last frame
+    var material = new ThreeRTT.FragmentMaterial(this, 'generic-fragment-texture');
+    var surface = this._surface(material);
+    root.add(surface);
+    root.add(object);
+
+    // Add root to scene and insert into pass list
+    this.scene.add(root);
+    this.passes.push(1);
+    this.renderables.push(root);
   },
 
   // Add iteration pass
   iterate: function (n, material) {
 
-    var surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
-    surface.frustumCulled = false;
+    // Create a surface to render the pass with
+    var surface = this._surface(material);
     surface.visible = false;
-    surface.material = material;
 
+    // Add surface to scene and insert into pass list
     this.scene.add(surface);
-
     this.passes.push(n);
-    this.surfaces.push(surface);
+    this.renderables.push(surface);
 
     return this;
   },
@@ -223,12 +245,17 @@ ThreeRTT.Stage.prototype = {
   render: function () {
 	  this.target.clear();
 
+    function toggle(object, value) {
+      object.visible = value;
+      _.each(object.children, function (object) { toggle(object, value); });
+    }
+
     _.each(this.passes, function (n, i) {
-      this.surfaces[i].visible = true;
-      _.loop(n, function () {
+      toggle(this.renderables[i], true);
+      _.loop(n, function (i) {
         this.target.render(this.scene, this.camera);
       }.bind(this));
-      this.surfaces[i].visible = false;
+      toggle(this.renderables[i], false);
     }.bind(this));
 
     return this;
@@ -247,29 +274,36 @@ ThreeRTT.Stage.prototype = {
     this.scene = null;
     this.camera = null;
     this.target = null;
-  }
+  },
+
+  // Generate full screen surface with default properties.
+  _surface: function (material) {
+    var surface = new THREE.Mesh(new ThreeRTT.ScreenGeometry(), {});
+    surface.frustumCulled = false;
+    surface.material = material;
+    surface.renderDepth = Infinity;
+
+    return surface;
+  },
+
 }
 /**
  * Compose render-to-textures into a scene by adding a full screen quad
  * that uses the textures as inputs.
  */
-ThreeRTT.Compose = function (scene, rtts, fragmentShader, textures, uniforms) {
+ThreeRTT.Compose = function (rtts, fragmentShader, textures, uniforms) {
+  THREE.Object3D.call(this);
+
   // Create full screen quad.
   var material = new ThreeRTT.FragmentMaterial(rtts, fragmentShader, textures, uniforms);
   var geometry = new ThreeRTT.ScreenGeometry();
-  var mesh = new THREE.Mesh(geometry, material);
+  var mesh = this.mesh = new THREE.Mesh(geometry, material);
   mesh.frustumCulled = false;
-  scene.add(mesh);
 
-  // Remember scene/mesh association.
-  this.scene = scene;
-  this.mesh = mesh;
+  this.add(mesh);
 }
 
-// Remove fullscreen quad
-ThreeRTT.Compose.prototype.remove = function () {
-  this.scene.remove(this.mesh);
-};
+ThreeRTT.Compose.prototype = new THREE.Object3D();
 // Handy Camera factory
 ThreeRTT.Camera = function (options) {
   // Camera passthrough
@@ -577,7 +611,7 @@ ThreeRTT.ScreenGeometry = function () {
 /**
  * Helper for making ShaderMaterials that read from textures and write out processed fragments.
  */
-ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, uniforms) {
+ThreeRTT.ShaderMaterial = function (renderTargets, vertexShader, fragmentShader, textures, uniforms) {
 
   // Autoname texture uniforms as texture1, texture2, ...
   function textureName(j) {
@@ -629,7 +663,7 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   _.each(renderTargets, function (target, j) {
     // Create texture1, texture2, ... uniforms.
     var key = textureName(j);
-    if (!uniforms[key]) {
+    if (target.read && !uniforms[key]) {
       uniforms[key] = {
         type: 't',
         value: target.read()//,
@@ -664,11 +698,21 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   // Lookup shaders and build material
   var material = new THREE.ShaderMaterial({
     uniforms:       uniforms,
-    vertexShader:   ThreeRTT.getShader('generic-vertex-screen'),
+    vertexShader:   ThreeRTT.getShader(vertexShader || 'generic-vertex'),
     fragmentShader: ThreeRTT.getShader(fragmentShader || 'generic-fragment-texture')//,
   });
 
-  // Disable depth buffer for RTT operations by default.
+  return material;
+};
+/**
+ * Helper for making ShaderMaterials that read from textures and write out processed fragments.
+ */
+ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, uniforms) {
+
+  var material = new ThreeRTT.ShaderMaterial(
+                  renderTargets, 'generic-vertex-screen', fragmentShader, textures, uniforms);
+
+  // Disable depth buffer for RTT fragment operations by default.
   material.side = THREE.DoubleSide;
   material.depthTest = false;
   material.depthWrite = false;
@@ -676,7 +720,8 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   material.blending = THREE.NoBlending;
 
   return material;
-};/**
+};
+/**
  * Specialized ShaderMaterial for downsampling a texture by a factor of 2 with anti-aliasing.
  */
 ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
@@ -799,13 +844,13 @@ ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, un
 };/**
  * Debug/testing helper that displays the given rendertargets in a grid
  */
-ThreeRTT.Display = function (gx, gy, targets) {
+ThreeRTT.Display = function (targets, gx, gy) {
   if (!(targets instanceof Array)) {
     targets = [targets];
   }
 
-  this.gx = gx;
-  this.gy = gy;
+  this.gx = gx || targets.length;
+  this.gy = gy || 1;
   this.targets = targets;
   this.n = targets.length;
 
@@ -830,7 +875,7 @@ ThreeRTT.Display.prototype = _.extend(new THREE.Object3D(), {
       for (var x = 0; i < n && x < gx; ++x, ++i) {
         var material = new THREE.MeshBasicMaterial({
           color: 0xffffff,
-          map: targets[i].read(),
+          map: ThreeRTT.toTexture(targets[i]),
           fog: false
         });
         material.side = THREE.DoubleSide;

@@ -2,20 +2,16 @@
  * Compose render-to-textures into a scene by adding a full screen quad
  * that uses the textures as inputs.
  */
-ThreeRTT.Compose = function (scene, rtts, fragmentShader, textures, uniforms) {
+ThreeRTT.Compose = function (rtts, fragmentShader, textures, uniforms) {
+  THREE.Object3D.call(this);
+
   // Create full screen quad.
   var material = new ThreeRTT.FragmentMaterial(rtts, fragmentShader, textures, uniforms);
   var geometry = new ThreeRTT.ScreenGeometry();
-  var mesh = new THREE.Mesh(geometry, material);
+  var mesh = this.mesh = new THREE.Mesh(geometry, material);
   mesh.frustumCulled = false;
-  scene.add(mesh);
 
-  // Remember scene/mesh association.
-  this.scene = scene;
-  this.mesh = mesh;
+  this.add(mesh);
 }
 
-// Remove fullscreen quad
-ThreeRTT.Compose.prototype.remove = function () {
-  this.scene.remove(this.mesh);
-};
+ThreeRTT.Compose.prototype = new THREE.Object3D();

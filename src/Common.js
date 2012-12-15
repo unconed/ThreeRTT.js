@@ -38,7 +38,7 @@ ThreeRTT.toTarget = function (rtt) {
   if (ThreeRTT.Stage && (rtt instanceof ThreeRTT.Stage)) return rtt.target;
   // tQuery world
   if (ThreeRTT.World && (rtt instanceof ThreeRTT.World)) return rtt.target();
-  // RenderTarget
+  // RenderTarget or texture
   return rtt;
 }
 
@@ -48,6 +48,7 @@ ThreeRTT.toTexture = function (rtt, i) {
   rtt = ThreeRTT.toTarget(rtt);
   // Convert virtual RenderTarget object to uniform
   if (ThreeRTT.RenderTarget && (rtt instanceof ThreeRTT.RenderTarget)) return rtt.read();
+  return rtt;
 }
 
 // Make microevent methods chainable.

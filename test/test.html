@@ -19,11 +19,10 @@
         };
         var element = document.getElementById('holder');
 
-        var world = window.world = threeBox(element, options).start();
+        var world = threeBox(element, options).start();
 
         // Create stage
-        var scene = world.tScene();
-        var rtt = window.rtt = new ThreeRTT.Stage(world.tRenderer(), {
+        var rtt = world.rtt({
           width: 512,
           height: 512,
           history: 0,
@@ -31,12 +30,11 @@
         });
 
         // Generate test texture in shader
-        var material = window.material = new ThreeRTT.FragmentMaterial(rtt, 'rtt-generate-test');
-        rtt.material(material);
+        rtt.fragment('rtt-generate-test');
         rtt.render();
 
         // Create stage
-        var rtt2 = window.rtt2 = new ThreeRTT.Stage(world.tRenderer(), {
+        var rtt2 = world.rtt({
           width: 512,
           height: 512,
           history: 0,
@@ -44,8 +42,7 @@
         });
 
         // Generate test texture in shader
-        var material2 = window.material2 = new ThreeRTT.FragmentMaterial(rtt2, 'rtt-process-test', rtt);
-        rtt2.material(material2);
+        rtt2.fragment('rtt-process-test', rtt);
         rtt2.render();
 
         // Test object
@@ -56,12 +53,16 @@
         object.material.side = THREE.DoubleSide;
 
         window.rtt = rtt;
+        window.rtt2 = rtt2;
+        window.world = world;
         window.object = object;
+
         // Compose RTT into scene
-        var compose = new ThreeRTT.Compose(scene, rtt);
+        var compose = new ThreeRTT.Compose(rtt);
         compose.mesh.material.depthTest = true;
 
-        scene.add(object);
+        world.tScene().add(compose);
+        world.tScene().add(object);
       });
     });
   </script>
