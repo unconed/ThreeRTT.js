@@ -16,8 +16,7 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
     },
     texture: {
       type: 't',
-      value: 0,
-      texture: renderTargetFrom.read()//,
+      value: renderTargetFrom.read()//,
     }//,
   });
 
@@ -47,6 +46,7 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
   material.depthTest = false;
   material.depthWrite = false;
   material.transparent = true;
+  material.blending = THREE.NoBlending;
 
   return material;
 };

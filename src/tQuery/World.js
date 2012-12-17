@@ -173,13 +173,15 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     this.scale(scale * 2);
 
     // Force this world to right size now if not autosizing
-    if (!worldFrom.autoSize) {
+    if (!worldFrom.autoSize()) {
       var size = worldFrom.size();
       this.size(size.width / 2, size.height / 2);
     }
 
     var material = tQuery.createDownsampleMaterial(worldFrom, this);
     this._stage.fragment(material);
+
+    return this;
   },
 
   // Return the virtual texture for reading from this RTT stage.
