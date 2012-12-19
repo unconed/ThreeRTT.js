@@ -83,6 +83,9 @@ ThreeRTT.Stage = function (renderer, options) {
 
   // Prepare data structures.
   this.reset();
+
+  // Set size and aspect
+  this.size(options.width, options.height);
 }
 
 ThreeRTT.Stage.prototype = {
@@ -146,6 +149,8 @@ ThreeRTT.Stage.prototype = {
 
   // Resize render-to-texture
   size: function (width, height) {
+    width = Math.floor(width);
+    height = Math.floor(height);
     this.camera.aspect = width / height;
     this.target.size(width, height);
     return this;

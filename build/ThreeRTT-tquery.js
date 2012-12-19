@@ -163,6 +163,9 @@ ThreeRTT.Stage = function (renderer, options) {
 
   // Prepare data structures.
   this.reset();
+
+  // Set size and aspect
+  this.size(options.width, options.height);
 }
 
 ThreeRTT.Stage.prototype = {
@@ -226,6 +229,8 @@ ThreeRTT.Stage.prototype = {
 
   // Resize render-to-texture
   size: function (width, height) {
+    width = Math.floor(width);
+    height = Math.floor(height);
     this.camera.aspect = width / height;
     this.target.size(width, height);
     return this;
@@ -967,20 +972,37 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     return this._options.autoSize;
   },
 
+  // Adjust in response to size changes
+  adjust: function (ignore) {
+    var scale = this._options.scale;
+    var width = this._options.width,
+        height = this._options.height;
+
+    if (this._options.autoSize) {
+      // Resize immediately based off parent scale.
+      var opts = this._world._opts;
+      width = opts.renderW,
+      height = opts.renderH;
+    }
+
+    width /= scale;
+    height /= scale;
+
+    // Compatibility with tQuery world
+    this._opts = {
+      renderW: width ,
+      renderH: height//,
+    };
+
+    // Ignore on init.
+    ignore || this._stage.size(width, height)
+  },
+
   // Change the autoscale factor
   scale: function (scale) {
     if (scale) {
       this._options.scale = scale;
-
-      if (this._options.autoSize) {
-        // Resize immediately based off parent scale.
-        var opts = this._world._opts,
-            width = opts.renderW / scale,
-            height = opts.renderH / scale;
-
-        this.size(width, height);
-      }
-
+      this.adjust();
       return this;
     }
 
@@ -993,14 +1015,8 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
       this._options.width = width;
       this._options.height = height;
 
-      // Compatibility with tQuery world
-      this._opts = {
-        renderW: width,
-        renderH: height//,
-      };
-
       // Ignore on init.
-      ignore || this._stage.size(width, height);
+      this.adjust(ignore);
       return this;
     }
 
@@ -1059,15 +1075,16 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
 
   // Add a downsample rendering pass
   downsample: function (worldFrom) {
-    // Force this world to right scale (will autosize)
-    var scale = worldFrom.scale();
-    this.scale(scale * 2);
-
     // Force this world to right size now if not autosizing
     if (!worldFrom.autoSize()) {
       var size = worldFrom.size();
-      this.size(size.width / 2, size.height / 2);
+      this._options.width = size.width;
+      this._options.height = size.height;
     }
+
+    // Force this world to right scale (will autosize)
+    var scale = worldFrom.scale();
+    this.scale(scale * 2);
 
     var material = tQuery.createDownsampleMaterial(worldFrom, this);
     this._stage.fragment(material);
