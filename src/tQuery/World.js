@@ -139,8 +139,8 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
   },
 
   // Add a painting rendering pass
-  paint: function (object) {
-    this._stage.paint(object);
+  paint: function (object, empty) {
+    this._stage.paint(object, empty);
     return this;
   },
 

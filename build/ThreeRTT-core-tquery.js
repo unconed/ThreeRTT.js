@@ -106,7 +106,7 @@ ThreeRTT.Stage.prototype = {
   },
 
   // Add object render pass
-  paint: function (object) {
+  paint: function (object, empty) {
 
     // Create root to hold all objects for this pass
     var root = new THREE.Object3D();
@@ -114,9 +114,13 @@ ThreeRTT.Stage.prototype = {
     root.visible = true;
 
     // Create a surface to render the last frame
-    var material = new ThreeRTT.FragmentMaterial(this, 'generic-fragment-texture');
-    var surface = this._surface(material);
-    root.add(surface);
+    if (!empty) {
+      var material = new ThreeRTT.FragmentMaterial(this, 'generic-fragment-texture');
+      var surface = this._surface(material);
+      root.add(surface);
+    }
+
+    // Add object
     root.add(object);
 
     // Add root to scene and insert into pass list
@@ -806,6 +810,7 @@ ThreeRTT.Display.prototype = _.extend(new THREE.Object3D(), {
         material.side = THREE.DoubleSide;
 
         var mesh = new THREE.Mesh(geometry, material);
+        mesh.renderDepth = 10000 + Math.random();
         this.add(mesh);
 
         if (gx > 1) mesh.position.x = -igx + x;
@@ -955,8 +960,8 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
   },
 
   // Add a painting rendering pass
-  paint: function (object) {
-    this._stage.paint(object);
+  paint: function (object, empty) {
+    this._stage.paint(object, empty);
     return this;
   },
 
@@ -1136,7 +1141,7 @@ tQuery.World.registerInstance('rtt', function (options) {
 tQuery.World.registerInstance('compose', function (rtts, fragmentShader, textures, uniforms) {
   var compose = tQuery.createComposeRTT(rtts, fragmentShader, textures, uniforms);
   this.add(compose);
-  return this;
+  return compose;
 });
 
 /**
@@ -1145,7 +1150,7 @@ tQuery.World.registerInstance('compose', function (rtts, fragmentShader, texture
 tQuery.World.registerInstance('display', function (targets, gx, gy) {
   var display = tQuery.createDisplayRTT(targets, gx, gy);
   this.add(display);
-  return this;
+  return display;
 });
 
 /**

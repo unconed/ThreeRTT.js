@@ -1,6 +1,9 @@
 Changes
 -------
 
+Dec 18, 2012
+* .compose() and .display() return their component objects to allow further manipulation.
+
 Dec 14, 2012
 
 * Added `.display()` tquery world method to insert a Display object.

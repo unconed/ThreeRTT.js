@@ -11,7 +11,7 @@ tQuery.World.registerInstance('rtt', function (options) {
 tQuery.World.registerInstance('compose', function (rtts, fragmentShader, textures, uniforms) {
   var compose = tQuery.createComposeRTT(rtts, fragmentShader, textures, uniforms);
   this.add(compose);
-  return this;
+  return compose;
 });
 
 /**
@@ -20,7 +20,7 @@ tQuery.World.registerInstance('compose', function (rtts, fragmentShader, texture
 tQuery.World.registerInstance('display', function (targets, gx, gy) {
   var display = tQuery.createDisplayRTT(targets, gx, gy);
   this.add(display);
-  return this;
+  return display;
 });
 
 /**

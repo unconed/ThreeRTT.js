@@ -38,6 +38,7 @@ ThreeRTT.Display.prototype = _.extend(new THREE.Object3D(), {
         material.side = THREE.DoubleSide;
 
         var mesh = new THREE.Mesh(geometry, material);
+        mesh.renderDepth = 10000 + Math.random();
         this.add(mesh);
 
         if (gx > 1) mesh.position.x = -igx + x;
