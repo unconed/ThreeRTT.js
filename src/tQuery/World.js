@@ -155,6 +155,17 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     return this;
   },
 
+  // Add a shader rendering pass
+  shader: function (vertexShader, fragmentShader, textures, uniforms) {
+    var material = vertexShader instanceof THREE.Material
+                 ? vertexShader
+                 : tQuery.createShaderMaterial(
+                    this, vertexShader, fragmentShader, textures, uniforms);
+
+    this._stage.fragment(material);
+    return this;
+  },
+
   // Add a fragment rendering pass
   fragment: function (fragmentShader, textures, uniforms) {
     var material = fragmentShader instanceof THREE.Material
@@ -191,6 +202,25 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     this.scale(scale * 2);
 
     var material = tQuery.createDownsampleMaterial(worldFrom, this);
+    this._stage.fragment(material);
+
+    return this;
+  },
+
+  // Add an upsample rendering pass
+  upsample: function (worldFrom) {
+    // Force this world to right size now if not autosizing
+    if (!worldFrom.autoSize()) {
+      var size = worldFrom.size();
+      this._options.width = size.width;
+      this._options.height = size.height;
+    }
+
+    // Force this world to right scale (will autosize)
+    var scale = worldFrom.scale();
+    this.scale(scale * 0.5);
+
+    var material = tQuery.createUpsampleMaterial(worldFrom, this);
     this._stage.fragment(material);
 
     return this;

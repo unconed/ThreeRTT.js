@@ -72,3 +72,17 @@ tQuery.registerStatic('createRaytraceMaterial', function (world, fragmentShader,
 tQuery.registerStatic('createDownsampleMaterial', function (worldFrom, worldTo) {
   return new ThreeRTT.DownsampleMaterial(worldFrom, worldTo);
 });
+
+/**
+ * Create a UpsampleMaterial.
+ */
+tQuery.registerStatic('createUpsampleMaterial', function (worldFrom, worldTo) {
+  return new ThreeRTT.UpsampleMaterial(worldFrom, worldTo);
+});
+
+/**
+ * Create a ScaleMaterial.
+ */
+tQuery.registerStatic('createScaleMaterial', function (worldFrom, worldTo, scale) {
+  return new ThreeRTT.DownsampleMaterial(worldFrom, worldTo, scale);
+});

@@ -651,9 +651,9 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   return material;
 };
 /**
- * Specialized ShaderMaterial for downsampling a texture by a factor of 2 with anti-aliasing.
+ * Specialized ShaderMaterial for up/downsampling a texture by a factor of 2 with anti-aliasing.
  */
-ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
+ThreeRTT.ScaleMaterial = function (renderTargetFrom, renderTargetTo, scale) {
   var uniforms = {};
 
   // Accept both Stage and RenderTarget classes
@@ -678,8 +678,8 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
         to = renderTargetTo;
 
     // Correction for odd downsample.
-    var dx = (to.width * 2) / from.width,
-        dy = (to.height * 2) / from.height;
+    var dx = (to.width * scale) / from.width,
+        dy = (to.height * scale) / from.height;
 
     var value = uniforms.sampleAlignment.value;
     value.x = dx;
@@ -701,7 +701,18 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
   material.blending = THREE.NoBlending;
 
   return material;
-};/**
+};
+
+/**
+ * Helper classes
+ */
+ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
+  return new ThreeRTT.ScaleMaterial(renderTargetFrom, renderTargetTo, 2);
+}
+ThreeRTT.UpsampleMaterial = function (renderTargetFrom, renderTargetTo) {
+  return new ThreeRTT.ScaleMaterial(renderTargetFrom, renderTargetTo, 0.5);
+}
+/**
  * Helper for making ShaderMaterials that raytrace in camera space per pixel.
  */
 ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, uniforms) {
@@ -976,6 +987,17 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     return this;
   },
 
+  // Add a shader rendering pass
+  shader: function (vertexShader, fragmentShader, textures, uniforms) {
+    var material = vertexShader instanceof THREE.Material
+                 ? vertexShader
+                 : tQuery.createShaderMaterial(
+                    this, vertexShader, fragmentShader, textures, uniforms);
+
+    this._stage.fragment(material);
+    return this;
+  },
+
   // Add a fragment rendering pass
   fragment: function (fragmentShader, textures, uniforms) {
     var material = fragmentShader instanceof THREE.Material
@@ -1012,6 +1034,25 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
     this.scale(scale * 2);
 
     var material = tQuery.createDownsampleMaterial(worldFrom, this);
+    this._stage.fragment(material);
+
+    return this;
+  },
+
+  // Add an upsample rendering pass
+  upsample: function (worldFrom) {
+    // Force this world to right size now if not autosizing
+    if (!worldFrom.autoSize()) {
+      var size = worldFrom.size();
+      this._options.width = size.width;
+      this._options.height = size.height;
+    }
+
+    // Force this world to right scale (will autosize)
+    var scale = worldFrom.scale();
+    this.scale(scale * 0.5);
+
+    var material = tQuery.createUpsampleMaterial(worldFrom, this);
     this._stage.fragment(material);
 
     return this;
@@ -1201,4 +1242,18 @@ tQuery.registerStatic('createRaytraceMaterial', function (world, fragmentShader,
  */
 tQuery.registerStatic('createDownsampleMaterial', function (worldFrom, worldTo) {
   return new ThreeRTT.DownsampleMaterial(worldFrom, worldTo);
+});
+
+/**
+ * Create a UpsampleMaterial.
+ */
+tQuery.registerStatic('createUpsampleMaterial', function (worldFrom, worldTo) {
+  return new ThreeRTT.UpsampleMaterial(worldFrom, worldTo);
+});
+
+/**
+ * Create a ScaleMaterial.
+ */
+tQuery.registerStatic('createScaleMaterial', function (worldFrom, worldTo, scale) {
+  return new ThreeRTT.DownsampleMaterial(worldFrom, worldTo, scale);
 });

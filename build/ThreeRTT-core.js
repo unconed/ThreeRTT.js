@@ -651,9 +651,9 @@ ThreeRTT.FragmentMaterial = function (renderTargets, fragmentShader, textures, u
   return material;
 };
 /**
- * Specialized ShaderMaterial for downsampling a texture by a factor of 2 with anti-aliasing.
+ * Specialized ShaderMaterial for up/downsampling a texture by a factor of 2 with anti-aliasing.
  */
-ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
+ThreeRTT.ScaleMaterial = function (renderTargetFrom, renderTargetTo, scale) {
   var uniforms = {};
 
   // Accept both Stage and RenderTarget classes
@@ -678,8 +678,8 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
         to = renderTargetTo;
 
     // Correction for odd downsample.
-    var dx = (to.width * 2) / from.width,
-        dy = (to.height * 2) / from.height;
+    var dx = (to.width * scale) / from.width,
+        dy = (to.height * scale) / from.height;
 
     var value = uniforms.sampleAlignment.value;
     value.x = dx;
@@ -701,7 +701,18 @@ ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
   material.blending = THREE.NoBlending;
 
   return material;
-};/**
+};
+
+/**
+ * Helper classes
+ */
+ThreeRTT.DownsampleMaterial = function (renderTargetFrom, renderTargetTo) {
+  return new ThreeRTT.ScaleMaterial(renderTargetFrom, renderTargetTo, 2);
+}
+ThreeRTT.UpsampleMaterial = function (renderTargetFrom, renderTargetTo) {
+  return new ThreeRTT.ScaleMaterial(renderTargetFrom, renderTargetTo, 0.5);
+}
+/**
  * Helper for making ShaderMaterials that raytrace in camera space per pixel.
  */
 ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, uniforms) {
