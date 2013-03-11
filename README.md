@@ -54,10 +54,10 @@ var material = new ThreeRTT.FragmentMaterial(rtt, fragmentShader);
 var material = new ThreeRTT.FragmentMaterial(rtt, fragmentShader, textures, uniforms);
 ```
 
-Use the .material() method to render the shader as a full screen quad into the stage:
+Use the .fragment() method to render the shader as a full screen quad into the stage:
 
 ```javascript
-rtt.material(material);
+rtt.fragment(material);
 ```
 
 Add something into the RTT scene to draw onto the feedback surface.
