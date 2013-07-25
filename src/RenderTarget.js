@@ -113,7 +113,7 @@ ThreeRTT.RenderTarget.prototype = {
   deallocateTargets: function () {
     // Deallocate real targets that were used in rendering.
     _.each(this.targets || [], function (target) {
-      this.renderer.deallocateRenderTarget(target);
+      target.dispose();
     }.bind(this));
   },
 
@@ -203,7 +203,7 @@ ThreeRTT.RenderTarget.prototype = {
     var alpha = renderer.getClearAlpha();
 
     // Apple new clearing color
-    renderer.setClearColorHex(options.clearColor, options.clearAlpha);
+    renderer.setClearColor(options.clearColor, options.clearAlpha);
     renderer.clearTarget(this.write(), clear.color, clear.stencil, clear.depth);
 
     // Reset state

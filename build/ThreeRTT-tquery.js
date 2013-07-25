@@ -462,7 +462,7 @@ ThreeRTT.RenderTarget.prototype = {
   deallocateTargets: function () {
     // Deallocate real targets that were used in rendering.
     _.each(this.targets || [], function (target) {
-      this.renderer.deallocateRenderTarget(target);
+      target.dispose();
     }.bind(this));
   },
 
@@ -552,7 +552,7 @@ ThreeRTT.RenderTarget.prototype = {
     var alpha = renderer.getClearAlpha();
 
     // Apple new clearing color
-    renderer.setClearColorHex(options.clearColor, options.clearAlpha);
+    renderer.setClearColor(options.clearColor, options.clearAlpha);
     renderer.clearTarget(this.write(), clear.color, clear.stencil, clear.depth);
 
     // Reset state
@@ -954,8 +954,8 @@ ThreeRTT.World  = function (world, options) {
   this._stage = new ThreeRTT.Stage(this._renderer, options);
 
   // Expose scene and camera
-  this._scene  = this._stage.scene;
-  this._camera = this._stage.camera;
+  this._tScene  = this._stage.scene;
+  this._tCamera = this._stage.camera;
 
   // Add to RTT queue at specified order.
   this.queue = ThreeRTT.RenderQueue.bind(world);

@@ -235,14 +235,15 @@ tQuery.World.registerInstance('addThreeBox', function (element, options) {
   if (options.cameraControls) {
     var loop = this.loop(), render = this.render.bind(this);
 
-    ctx.cameraControls = ThreeBox.OrbitControls
-      .bind(tCamera, element, options)
-      .on('change', function () {
+    ctx.cameraControls = new options.controlClass(tCamera, element, options);
+    if (ctx.cameraControls.on) {
+      ctx.cameraControls.on('change', function () {
         // If not looping, ensure view is updated on interaction.
         if (!loop._timerId) {
           render();
         }
       });
+    }
     this.setCameraControls(ctx.cameraControls);
   }
 
@@ -265,12 +266,12 @@ tQuery.World.registerInstance('addThreeBox', function (element, options) {
   }
 
   // Allow 'p' to make screenshot.
-  if (options.screenshot) {
+  if (THREEx && THREEx.Screenshot && options.screenshot) {
     ctx.screenshot = THREEx.Screenshot.bindKey(tRenderer);
   }
 
   // Allow 'f' to go fullscreen where this feature is supported.
-  if (options.fullscreen && THREEx.FullScreen.available()) {
+  if (THREEx && THREEx.FullScreen && options.fullscreen && THREEx.FullScreen.available()) {
     ctx.fullscreen = THREEx.FullScreen.bindKey();
   }
 
@@ -430,25 +431,28 @@ ThreeBox.OrbitControls.prototype = {
   start: function () {
     var that = this;
 
-    this._mouseDown = (function (event) {
-      this.drag = true;
-      this.lastHover = this.origin = { x: event.pageX, y: event.pageY };
+    this._mouseDown = function (event) {
+      that.width = that.element && that.element.offsetWidth,
+      that.height = that.element && that.element.offsetHeight;
+
+      that.drag = true;
+      that.lastHover = that.origin = { x: event.pageX, y: event.pageY };
 
       event.preventDefault();
-    }).bind(this);
+    };
 
-    this._mouseUp = (function () {
-      this.drag = false;
-    }).bind(this);
+    this._mouseUp = function () {
+      that.drag = false;
+    };
 
-    this._mouseMove = (function (event) {
+    this._mouseMove = function (event) {
       if (that.drag) {
         var relative = { x: event.pageX - that.origin.x, y: event.pageY - that.origin.y },
             delta = { x: event.pageX - that.lastHover.x, y: event.pageY - that.lastHover.y };
         that.lastHover = { x: event.pageX, y: event.pageY };
         that.moved(that.origin, relative, delta);
       }
-    }).bind(this);
+    };
 
     if (this.element) {
       this.element.addEventListener('mousedown', this._mouseDown, false);
@@ -477,7 +481,7 @@ ThreeBox.OrbitControls.prototype = {
     this.camera.position.y = Math.sin(this.theta) * this.orbit;
     this.camera.position.z = Math.sin(this.phi) * Math.cos(this.theta) * this.orbit;
 
-    this.camera.position.addSelf(this.lookAt);
+    this.camera.position.add(this.lookAt);
     this.camera.lookAt(this.lookAt);
   }//,
 
@@ -552,32 +556,91 @@ ThreeBox.preload = function (files, callback) {
 
   // Completion counter
   var remaining = files.length;
+  var accumulate = {};
+  var ping = function (data) {
+    // Collect objects
+    _.extend(accumulate, data || {});
 
-  // Load individual file and add to DOM
-  _.each(files, function (file) {
-    // Load file and insert into DOM.
-    new microAjax(file, function (res) {
-      var match;
+    // Call callback if done.
+    if (--remaining == 0) {
+      callback(accumulate);
+    };
+  }
 
-      // Insert script tags directly
-      if (match = res.match(/^<script[^>]*type=['"]text\/javascript['"][^>]*>([\s\S]+?)<\/script>$/m)) {
-        var script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.innerHTML = match[1];
-        document.body.appendChild(script);
-      }
-      // Insert HTML via div
-      else {
-        var div = document.createElement('div');
-        div.innerHTML = res;
-        document.body.appendChild(div);
-      }
-
-      // Call callback if done.
-      if (--remaining == 0) {
-        callback();
+  // Prepare extensions
+  var l = ThreeBox.preload;
+  var regexps = {},
+      exts = {
+        'html': l.html,
+        'jpg': l.image,
+        'png': l.image,
+        'gif': l.image,
+        'mp3': l.audio,
       };
+  _.each(exts, function (handler, ext) {
+    regexps[ext] = new RegExp('\\.' + ext + '$');
+  });
+
+  // Load individual file
+  _.each(files, function (file) {
+    // Use appropriate handler based on extension
+    _.each(exts, function (handler, ext) {
+      if (file.match(regexps[ext])) {
+        var path = file.split(/\//g);
+        var name = path.pop().replace(/\.[A-Za-z0-9]+$/, '');
+
+        handler(file, name, ping);
+      }
     });
   });
 };
 
+ThreeBox.preload.html = function (file, name, callback) {
+  new microAjax(file, function (res) {
+    var match;
+
+    // Insert javascript directly
+    if (match = res.match(/^<script[^>]*type=['"]text\/javascript['"][^>]*>([\s\S]+?)<\/script>$/m)) {
+      var script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.innerHTML = match[1];
+      document.body.appendChild(script);
+    }
+    // Insert HTML via div
+    else {
+      var div = document.createElement('div');
+      div.innerHTML = res;
+      document.body.appendChild(div);
+    }
+
+    console.log('Loaded HTML ', file);
+    callback();
+  });
+};
+
+ThreeBox.preload.image = function (file, name, callback) {
+  THREE.ImageUtils.loadTexture(file, null, function (texture) {
+    var ret = {};
+    ret[name] = texture;
+
+    console.log('Loaded texture ', file);
+    callback(ret);
+  });
+};
+
+ThreeBox.preload.audio = function (file, name, callback) {
+  // Load binary file via AJAX
+  var request = new XMLHttpRequest();
+  request.open("GET", file, true);
+  request.responseType = "arraybuffer";
+
+  request.onload = function () {
+    var ret = {};
+    ret[name] = request.response;
+
+    console.log('Loaded audio ', file);
+    callback(ret);
+  };
+
+  request.send();
+}

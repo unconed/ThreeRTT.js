@@ -42,8 +42,8 @@ ThreeRTT.World  = function (world, options) {
   this._stage = new ThreeRTT.Stage(this._renderer, options);
 
   // Expose scene and camera
-  this._scene  = this._stage.scene;
-  this._camera = this._stage.camera;
+  this._tScene  = this._stage.scene;
+  this._tCamera = this._stage.camera;
 
   // Add to RTT queue at specified order.
   this.queue = ThreeRTT.RenderQueue.bind(world);

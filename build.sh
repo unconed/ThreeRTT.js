@@ -13,7 +13,7 @@ src/RenderTarget.js
 src/ScreenGeometry.js
 src/ShaderMaterial.js
 src/FragmentMaterial.js
-src/DownsampleMaterial.js
+src/ScaleMaterial.js
 src/RaytraceMaterial.js
 src/Display.js
 "

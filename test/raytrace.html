@@ -148,7 +148,7 @@
     void main() {
 
       // raytracing set up
-      vec2 xy = -(vUV * 2. - 1.) * cameraViewport * .5;
+      vec2 xy = -(vUV * 2. - 1.) * cameraViewport * .35;
       vec3 ray = normalize((cameraWorld * vec4(xy, 1., 1.)).xyz);
       vec3 pos = -(cameraWorld * vec4(0, 0, 0., 1.)).xyz;
 
@@ -156,12 +156,12 @@
       float y = distance(pos);
       float travel = 0.;
 
-      float step = 1., y2, dy, inv2, occ = 1.;
+      float step = 1., y2, dy, inv2;
 
       // ray marching
-      for (int i = 0; i < 32; ++i) {
+      for (int i = 0; i < 48; ++i) {
 
-        if (abs(step) < .00001) {
+        if (abs(step) < .000001) {
           break;
         }
 
@@ -169,14 +169,12 @@
         pos += ray * step;
         travel += step;
         y = distance(pos);
-        occ += .01;
 
       }
 
       // coloring
       vec3 blue = vec3(.2, .5, .9);
-      vec3 green = vec3(.2, .9, .2);
-      float cf = travel;
+      vec3 green = vec3(.2, .8, .2);
       vec3 color = blue + (green - blue) * travel;
 
       // normal for shading
@@ -199,12 +197,12 @@
 
       // shading + fog
       float diffuse = (dot(norm, normalize(vec3(5., 2., 1.))) * .5 + .5);
-      float fog = min(1., max(0., exp(-travel * 2.2) * 2.2));
+      float fog = min(1., max(0., exp(-travel * 1.5) * 1.7));
 
       // gamma correct lighting
       gl_FragColor = vec4(sqrt(
         0.05 * color * fog * ao * (diffuse * .5 + .5) +
-        color * max(0., 1.0 - fog)
+        color * max(0., 1.0 - fog) * .5
       ), 1.0);
     }
   </script>
@@ -222,12 +220,13 @@
           orbit: 1.5,
           theta: 0,
           phi: τ/4,
+          scale: 2,
         }).start();
 
         // raytracing parameters
         var opts = {
-          width: 512,
-          height: 512,
+//          width: 512,
+//          height: 512,
         };
 
         // uniforms for animation
@@ -245,6 +244,7 @@
         // set up raytrace pass
         var raytrace = window.raytrace = world.rtt(opts).raytrace('rt-test', {}, uniforms);
         var camera = raytrace.tCamera();
+        var controls = world.getCameraControls();
 
         world.loop().hookPreRender(function () {
           var th = +new Date() * .0005;
@@ -258,17 +258,17 @@
 
           if (!window.tt) {
             // reset camera controls
-            world._cameraControls.orbit = .47;
-            world._cameraControls.theta = .8;
+            controls.orbit = .47;
+            controls.theta = .8;
           }
           window.tt = true;
         })
 
         // bind camera controls to raytracer
-        world._cameraControls.camera = raytrace.tCamera();
+        controls.camera = raytrace.tCamera();
 
         // display raytrace result
-        world.display([ raytrace ], 1);
+        world.compose(raytrace);
 
       });
     });
