@@ -89,6 +89,7 @@ if( typeof module !== "undefined" && ('exports' in module)){
 
 // Namespace
 window.ThreeRTT = window.ThreeRTT || {};
+ThreeRTT.World = function () {};
 
 // Fetch shader from <script> tag by id
 // or pass through string if not exists.
