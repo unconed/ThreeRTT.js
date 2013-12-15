@@ -1,70 +1,48 @@
 /**
  * Helper for making ShaderMaterials that raytrace in camera space per pixel.
  */
-ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, uniforms) {
+ThreeRTT.RaytraceMaterial = function (renderTargets, camera, fragmentShader, textures, uniforms) {
 
-  // Autoname texture uniforms as texture1, texture2, ...
-  function textureName(j) {
-    return 'texture' + (j + 1);
+  // Accept one or more render targets as input for reading.
+  if (!(renderTargets instanceof Array)) {
+    renderTargets = [renderTargets];
   }
 
-  // Allow for array of textures.
-  if (textures instanceof Array) {
-    var object = {};
-    _.each(textures, function (texture, j) {
-      // Autoname texture uniforms as texture1, texture2, ...
-      var key = textureName(j);
-      object[key] = texture;
-    });
-  }
-  // Allow passing single texture/object
-  else if (textures instanceof THREE.Texture
-        || textures instanceof ThreeRTT.World
-        || textures instanceof THREE.WebGLRenderTarget) {
-    textures = { texture1: textures };
-  }
-
-  // Accept both Stage and RenderTarget classes
-  renderTarget = ThreeRTT.toTarget(renderTarget);
+  var material = new ThreeRTT.ShaderMaterial(
+                  renderTargets, 'raytrace-vertex-screen', fragmentShader, textures, uniforms);
 
   // Add camera uniforms.
-  uniforms = _.extend(uniforms || {}, {
-    cameraViewport: {
+  uniforms = _.extend(material.uniforms || {}, {
+    raytraceViewport: {
       type: 'v2',
-      value: new THREE.Vector2()//,
+      value: new THREE.Vector2(),
     },
-    cameraWorld: {
+    raytracePosition: {
+      type: 'v3',
+      value: new THREE.Vector3(),
+    },
+    raytraceMatrix: {
       type: 'm4',
-      value: new THREE.Matrix4()//,
-    }//,
-  });
-
-  // Make uniforms for input textures.
-  var i = 0;
-  _.each(textures || [], function (texture, key) {
-    uniforms[key] = {
-      type: 't',
-      value: i++,
-      texture: ThreeRTT.toTexture(texture)//,
-    };
+      value: new THREE.Matrix4(),
+    },
   });
 
   // Update camera uniforms on render.
-  renderTarget.on('render', function (scene, camera) {
+  var renderTarget = ThreeRTT.toTarget(renderTargets[0]);
+  var zero = new THREE.Vector3();
+  renderTarget.on('render', function (scene) {
     camera.updateMatrixWorld();
     if (camera.fov) {
       var tan = Math.tan(camera.fov * π / 360);
-      uniforms.cameraViewport.value.set(tan * camera.aspect, tan);
+      uniforms.raytraceViewport.value.set(tan * camera.aspect, tan);
     }
     if (camera.matrixWorld) {
-      uniforms.cameraWorld.value = camera.matrixWorld;
+      uniforms.raytraceMatrix.value.copy(camera.matrixWorld);
+      uniforms.raytraceMatrix.value.setPosition(zero);
+      uniforms.raytracePosition.value.getPositionFromMatrix(camera.matrixWorld);
     }
   });
 
   // Lookup shaders and build material
-  return new THREE.ShaderMaterial({
-    uniforms:       uniforms,
-    vertexShader:   ThreeRTT.getShader('generic-vertex-screen'),
-    fragmentShader: ThreeRTT.getShader(fragmentShader)//,
-  });
+  return material;
 };

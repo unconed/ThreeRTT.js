@@ -85,10 +85,10 @@ ThreeRTT.RenderTarget.prototype = {
 
   // Retrieve / change size
   size: function (width, height) {
-    if (width && height) {
+    if (width !== undefined && height !== undefined) {
       // Round floats to ints to help with half/quarter derived sizes.
-      this.width = width = Math.floor(width);
-      this.height = height = Math.floor(height);
+      this.width = width = Math.max(1, Math.floor(width));
+      this.height = height = Math.max(1, Math.floor(height));
 
       // Refresh/allocate targets.
       this.allocate();
@@ -204,7 +204,7 @@ ThreeRTT.RenderTarget.prototype = {
 
     // Apple new clearing color
     renderer.setClearColor(options.clearColor, options.clearAlpha);
-    renderer.clearTarget(this.write(), clear.color, clear.stencil, clear.depth);
+    renderer.clearTarget(this.write(), clear.color, clear.depth, clear.stencil);
 
     // Reset state
     renderer.setClearColor(color, alpha);

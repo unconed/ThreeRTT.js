@@ -12,9 +12,7 @@ ThreeRTT.Stage = function (renderer, options) {
   options.camera.aspect = options.camera.aspect || (options.width / options.height);
 
   // Create internal scene and default camera.
-  this.scene = options.scene || new THREE.Scene();
   this.camera = ThreeRTT.Camera(options.camera);
-	this.scene.add(this.camera);
 
   // Create virtual render target, passthrough options.
   this.target = new ThreeRTT.RenderTarget(renderer, options);
@@ -33,23 +31,15 @@ ThreeRTT.Stage.prototype = {
   },
 
   reset: function () {
-    if (this.renderables) {
-      _.each(this.renderables, function (surface) {
-        this.scene.remove(surface);
-      }.bind(this));
-    }
-
+    this.scenes   = [];
     this.passes   = [];
-    this.renderables = [];
   },
 
   // Add object render pass
   paint: function (object, empty) {
 
     // Create root to hold all objects for this pass
-    var root = new THREE.Object3D();
-    root.frustumCulled = false;
-    root.visible = true;
+    var root = new THREE.Scene();
 
     // Create a surface to render the last frame
     if (!empty) {
@@ -62,9 +52,8 @@ ThreeRTT.Stage.prototype = {
     root.add(object);
 
     // Add root to scene and insert into pass list
-    this.scene.add(root);
+    this.scenes.push(root);
     this.passes.push(1);
-    this.renderables.push(root);
   },
 
   // Add iteration pass
@@ -74,10 +63,13 @@ ThreeRTT.Stage.prototype = {
     var surface = this._surface(material);
     surface.visible = false;
 
+    // Create root to hold all objects for this pass
+    var root = new THREE.Scene();
+    root.add(surface);
+
     // Add surface to scene and insert into pass list
-    this.scene.add(surface);
+    this.scenes.push(root);
     this.passes.push(n);
-    this.renderables.push(surface);
 
     return this;
   },
@@ -93,7 +85,10 @@ ThreeRTT.Stage.prototype = {
   size: function (width, height) {
     width = Math.floor(width);
     height = Math.floor(height);
+
     this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+
     this.target.size(width, height);
     return this;
   },
@@ -112,17 +107,10 @@ ThreeRTT.Stage.prototype = {
   render: function () {
 	  this.target.clear();
 
-    function toggle(object, value) {
-      object.visible = value;
-      _.each(object.children, function (object) { toggle(object, value); });
-    }
-
     _.each(this.passes, function (n, i) {
-      toggle(this.renderables[i], true);
       _.loop(n, function (i) {
-        this.target.render(this.scene, this.camera);
+        this.target.render(this.scenes[i], this.camera);
       }.bind(this));
-      toggle(this.renderables[i], false);
     }.bind(this));
 
     return this;
@@ -138,7 +126,8 @@ ThreeRTT.Stage.prototype = {
   destroy: function () {
     this.target.deallocate();
 
-    this.scene = null;
+    this.scenes = [];
+    this.passes = [];
     this.camera = null;
     this.target = null;
   },
