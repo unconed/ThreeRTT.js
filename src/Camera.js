@@ -1,7 +1,7 @@
 // Handy Camera factory
 ThreeRTT.Camera = function (options) {
   // Camera passthrough
-  if (options.constructor instanceof THREE.Camera) return options;
+  if (options instanceof THREE.Camera) return options;
 
   // Defaults
   options = _.extend({
