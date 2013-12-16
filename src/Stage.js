@@ -61,7 +61,6 @@ ThreeRTT.Stage.prototype = {
 
     // Create a surface to render the pass with
     var surface = this._surface(material);
-    surface.visible = false;
 
     // Create root to hold all objects for this pass
     var root = new THREE.Scene();
