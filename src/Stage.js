@@ -107,7 +107,7 @@ ThreeRTT.Stage.prototype = {
 	  this.target.clear();
 
     _.each(this.passes, function (n, i) {
-      _.loop(n, function (i) {
+      _.loop(n, function (j) {
         this.target.render(this.scenes[i], this.camera);
       }.bind(this));
     }.bind(this));
