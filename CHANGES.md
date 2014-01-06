@@ -1,6 +1,10 @@
 Changes
 -------
 
+Jan 5 2014
+* The crappy RaytraceMaterial was rewritten. The uniforms are different, and the ray set up is simpler. See test/raytrace.html for an example.
+* Visibility of objects passed to .paint() is now respected.
+
 Dec 18, 2012
 * .compose() and .display() return their component objects to allow further manipulation.
 

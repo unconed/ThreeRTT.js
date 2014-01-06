@@ -6,7 +6,7 @@ tQuery.World.registerInstance('rtt', function (options) {
 });
 
 /**
- * Add a surface showing a render-to-texture surface to this world.
+ * Add a surface composing a render-to-texture to the screen.
  */
 tQuery.World.registerInstance('compose', function (rtts, fragmentShader, textures, uniforms) {
   var compose = tQuery.createComposeRTT(rtts, fragmentShader, textures, uniforms);
@@ -62,8 +62,8 @@ tQuery.registerStatic('createFragmentMaterial', function (worlds, fragmentShader
 /**
  * Create a RaytraceMaterial.
  */
-tQuery.registerStatic('createRaytraceMaterial', function (world, fragmentShader, textures, uniforms) {
-  return new ThreeRTT.RaytraceMaterial(world, fragmentShader, textures, uniforms);
+tQuery.registerStatic('createRaytraceMaterial', function (world, camera, fragmentShader, textures, uniforms) {
+  return new ThreeRTT.RaytraceMaterial(world, camera, fragmentShader, textures, uniforms);
 });
 
 /**

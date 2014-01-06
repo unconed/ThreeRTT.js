@@ -155,9 +155,7 @@ ThreeRTT.Stage = function (renderer, options) {
   options.camera.aspect = options.camera.aspect || (options.width / options.height);
 
   // Create internal scene and default camera.
-  this.scene = options.scene || new THREE.Scene();
   this.camera = ThreeRTT.Camera(options.camera);
-	this.scene.add(this.camera);
 
   // Create virtual render target, passthrough options.
   this.target = new ThreeRTT.RenderTarget(renderer, options);
@@ -176,23 +174,15 @@ ThreeRTT.Stage.prototype = {
   },
 
   reset: function () {
-    if (this.renderables) {
-      _.each(this.renderables, function (surface) {
-        this.scene.remove(surface);
-      }.bind(this));
-    }
-
+    this.scenes   = [];
     this.passes   = [];
-    this.renderables = [];
   },
 
   // Add object render pass
   paint: function (object, empty) {
 
     // Create root to hold all objects for this pass
-    var root = new THREE.Object3D();
-    root.frustumCulled = false;
-    root.visible = true;
+    var root = new THREE.Scene();
 
     // Create a surface to render the last frame
     if (!empty) {
@@ -205,9 +195,8 @@ ThreeRTT.Stage.prototype = {
     root.add(object);
 
     // Add root to scene and insert into pass list
-    this.scene.add(root);
+    this.scenes.push(root);
     this.passes.push(1);
-    this.renderables.push(root);
   },
 
   // Add iteration pass
@@ -215,12 +204,14 @@ ThreeRTT.Stage.prototype = {
 
     // Create a surface to render the pass with
     var surface = this._surface(material);
-    surface.visible = false;
+
+    // Create root to hold all objects for this pass
+    var root = new THREE.Scene();
+    root.add(surface);
 
     // Add surface to scene and insert into pass list
-    this.scene.add(surface);
+    this.scenes.push(root);
     this.passes.push(n);
-    this.renderables.push(surface);
 
     return this;
   },
@@ -236,7 +227,10 @@ ThreeRTT.Stage.prototype = {
   size: function (width, height) {
     width = Math.floor(width);
     height = Math.floor(height);
+
     this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+
     this.target.size(width, height);
     return this;
   },
@@ -255,17 +249,10 @@ ThreeRTT.Stage.prototype = {
   render: function () {
 	  this.target.clear();
 
-    function toggle(object, value) {
-      object.visible = value;
-      _.each(object.children, function (object) { toggle(object, value); });
-    }
-
     _.each(this.passes, function (n, i) {
-      toggle(this.renderables[i], true);
-      _.loop(n, function (i) {
-        this.target.render(this.scene, this.camera);
+      _.loop(n, function (j) {
+        this.target.render(this.scenes[i], this.camera);
       }.bind(this));
-      toggle(this.renderables[i], false);
     }.bind(this));
 
     return this;
@@ -281,7 +268,8 @@ ThreeRTT.Stage.prototype = {
   destroy: function () {
     this.target.deallocate();
 
-    this.scene = null;
+    this.scenes = [];
+    this.passes = [];
     this.camera = null;
     this.target = null;
   },
@@ -317,7 +305,7 @@ ThreeRTT.Compose.prototype = new THREE.Object3D();
 // Handy Camera factory
 ThreeRTT.Camera = function (options) {
   // Camera passthrough
-  if (options.constructor instanceof THREE.Camera) return options;
+  if (options instanceof THREE.Camera) return options;
 
   // Defaults
   options = _.extend({
@@ -435,10 +423,10 @@ ThreeRTT.RenderTarget.prototype = {
 
   // Retrieve / change size
   size: function (width, height) {
-    if (width && height) {
+    if (width !== undefined && height !== undefined) {
       // Round floats to ints to help with half/quarter derived sizes.
-      this.width = width = Math.floor(width);
-      this.height = height = Math.floor(height);
+      this.width = width = Math.max(1, Math.floor(width));
+      this.height = height = Math.max(1, Math.floor(height));
 
       // Refresh/allocate targets.
       this.allocate();
@@ -554,7 +542,7 @@ ThreeRTT.RenderTarget.prototype = {
 
     // Apple new clearing color
     renderer.setClearColor(options.clearColor, options.clearAlpha);
-    renderer.clearTarget(this.write(), clear.color, clear.stencil, clear.depth);
+    renderer.clearTarget(this.write(), clear.color, clear.depth, clear.stencil);
 
     // Reset state
     renderer.setClearColor(color, alpha);
@@ -796,72 +784,50 @@ ThreeRTT.UpsampleMaterial = function (renderTargetFrom, renderTargetTo) {
 /**
  * Helper for making ShaderMaterials that raytrace in camera space per pixel.
  */
-ThreeRTT.RaytraceMaterial = function (renderTarget, fragmentShader, textures, uniforms) {
+ThreeRTT.RaytraceMaterial = function (renderTargets, camera, fragmentShader, textures, uniforms) {
 
-  // Autoname texture uniforms as texture1, texture2, ...
-  function textureName(j) {
-    return 'texture' + (j + 1);
+  // Accept one or more render targets as input for reading.
+  if (!(renderTargets instanceof Array)) {
+    renderTargets = [renderTargets];
   }
 
-  // Allow for array of textures.
-  if (textures instanceof Array) {
-    var object = {};
-    _.each(textures, function (texture, j) {
-      // Autoname texture uniforms as texture1, texture2, ...
-      var key = textureName(j);
-      object[key] = texture;
-    });
-  }
-  // Allow passing single texture/object
-  else if (textures instanceof THREE.Texture
-        || textures instanceof ThreeRTT.World
-        || textures instanceof THREE.WebGLRenderTarget) {
-    textures = { texture1: textures };
-  }
-
-  // Accept both Stage and RenderTarget classes
-  renderTarget = ThreeRTT.toTarget(renderTarget);
+  var material = new ThreeRTT.ShaderMaterial(
+                  renderTargets, 'raytrace-vertex-screen', fragmentShader, textures, uniforms);
 
   // Add camera uniforms.
-  uniforms = _.extend(uniforms || {}, {
-    cameraViewport: {
+  uniforms = _.extend(material.uniforms || {}, {
+    raytraceViewport: {
       type: 'v2',
-      value: new THREE.Vector2()//,
+      value: new THREE.Vector2(),
     },
-    cameraWorld: {
+    raytracePosition: {
+      type: 'v3',
+      value: new THREE.Vector3(),
+    },
+    raytraceMatrix: {
       type: 'm4',
-      value: new THREE.Matrix4()//,
-    }//,
-  });
-
-  // Make uniforms for input textures.
-  var i = 0;
-  _.each(textures || [], function (texture, key) {
-    uniforms[key] = {
-      type: 't',
-      value: i++,
-      texture: ThreeRTT.toTexture(texture)//,
-    };
+      value: new THREE.Matrix4(),
+    },
   });
 
   // Update camera uniforms on render.
-  renderTarget.on('render', function (scene, camera) {
+  var renderTarget = ThreeRTT.toTarget(renderTargets[0]);
+  var zero = new THREE.Vector3();
+  renderTarget.on('render', function (scene) {
     camera.updateMatrixWorld();
     if (camera.fov) {
       var tan = Math.tan(camera.fov * π / 360);
-      uniforms.cameraViewport.value.set(tan * camera.aspect, tan);
+      uniforms.raytraceViewport.value.set(tan * camera.aspect, tan);
     }
     if (camera.matrixWorld) {
-      uniforms.cameraWorld.value = camera.matrixWorld;
+      uniforms.raytraceMatrix.value.copy(camera.matrixWorld);
+      uniforms.raytraceMatrix.value.setPosition(zero);
+      uniforms.raytracePosition.value.getPositionFromMatrix(camera.matrixWorld);
     }
   });
 
   // Lookup shaders and build material
-  return new THREE.ShaderMaterial({
-    uniforms:       uniforms,
-    vertexShader:   ThreeRTT.getShader('generic-vertex-screen'),
-    fragmentShader: ThreeRTT.getShader(fragmentShader)//,
-  });
+  return material;
 };/**
  * Debug/testing helper that displays the given rendertargets in a grid
  */
@@ -1091,11 +1057,11 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
   },
 
   // Add a raytrace rendering pass
-  raytrace: function (fragmentShader, textures, uniforms) {
+  raytrace: function (camera, fragmentShader, textures, uniforms) {
     var material = fragmentShader instanceof THREE.Material
                  ? fragmentShader
                  : tQuery.createRaytraceMaterial(
-                    this, fragmentShader, textures, uniforms);
+                    this, camera, fragmentShader, textures, uniforms);
 
     this._stage.fragment(material);
     return this;
@@ -1258,7 +1224,7 @@ tQuery.World.registerInstance('rtt', function (options) {
 });
 
 /**
- * Add a surface showing a render-to-texture surface to this world.
+ * Add a surface composing a render-to-texture to the screen.
  */
 tQuery.World.registerInstance('compose', function (rtts, fragmentShader, textures, uniforms) {
   var compose = tQuery.createComposeRTT(rtts, fragmentShader, textures, uniforms);
@@ -1314,8 +1280,8 @@ tQuery.registerStatic('createFragmentMaterial', function (worlds, fragmentShader
 /**
  * Create a RaytraceMaterial.
  */
-tQuery.registerStatic('createRaytraceMaterial', function (world, fragmentShader, textures, uniforms) {
-  return new ThreeRTT.RaytraceMaterial(world, fragmentShader, textures, uniforms);
+tQuery.registerStatic('createRaytraceMaterial', function (world, camera, fragmentShader, textures, uniforms) {
+  return new ThreeRTT.RaytraceMaterial(world, camera, fragmentShader, textures, uniforms);
 });
 
 /**

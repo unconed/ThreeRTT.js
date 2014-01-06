@@ -178,11 +178,11 @@ ThreeRTT.World.prototype = _.extend(new THREE.Object3D(), tQuery.World.prototype
   },
 
   // Add a raytrace rendering pass
-  raytrace: function (fragmentShader, textures, uniforms) {
+  raytrace: function (camera, fragmentShader, textures, uniforms) {
     var material = fragmentShader instanceof THREE.Material
                  ? fragmentShader
                  : tQuery.createRaytraceMaterial(
-                    this, fragmentShader, textures, uniforms);
+                    this, camera, fragmentShader, textures, uniforms);
 
     this._stage.fragment(material);
     return this;
