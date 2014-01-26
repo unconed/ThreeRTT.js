@@ -60,15 +60,17 @@ Use the .fragment() method to render the shader as a full screen quad into the s
 rtt.fragment(material);
 ```
 
-Add something into the RTT scene to draw onto the feedback surface.
+Pass an object into .paint() to draw it onto the feedback surface as a new pass.
 ```javascript
 // Render a sphere
 var sphere = new THREE.Mesh(
   new THREE.SphereGeometry(1),
   new THREE.MeshBasicMaterial()
 );
-rtt.scene.add(sphere);
+rtt.paint(sphere);
 ```
+
+Call `rtt.paint(sphere, true)` to paint into the buffer directly, without copying over the last frame first. Only do this if you repaint every pixel every framee.
 
 Compose the rendered texture into the world scene using the `Compose` helper:
 
